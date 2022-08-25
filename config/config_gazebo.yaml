@@ -1,0 +1,10 @@
+env: "gazebo"
+mode: "init"
+haptic_feedback: false
+base_controller: "arm_controller"
+position_controller: "joint_group_pos_controller"
+velocity_controller: "joint_group_vel_controller"
+# init_pose: [0.180, 0.531, 0.589, -1.544, 0.002, -0.120] # wrist_3_link 기준
+# init_joint_states: [-1.601372543965475, -1.3494799772845667, -2.0361130873309534, -1.3006231672108264, 1.5698880420405317, 0.09116100519895554]
+init_pose: [0.181, 0.538, 0.325, 0.035, 1.545, 1.486] # tool_gripper 기준
+init_joint_states: [-1.601372543965475, -1.3494799772845667, -2.0361130873309534, -1.3006231672108264, 1.5698880420405317, 0.09116100519895554]

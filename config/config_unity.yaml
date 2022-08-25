@@ -1,0 +1,9 @@
+prefix: ""
+sim: true
+controller_type: "position"
+mode: "stop"
+base_controller: "arm_controller"
+position_controller: "joint_group_pos_controller"
+velocity_controller: "joint_group_vel_controller"
+init_pose: []
+init_joint_states: []

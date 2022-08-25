@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!-- rviz -->
+    <node name='cam1' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/cam1.rviz'/>>
+    <node name='cam2' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/cam2.rviz'/>>
+    <node name='cam3' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/cam3.rviz'/>>
+    <node name='cam4' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/cam4.rviz'/>>
+
+    <!-- joystick node -->
+    <node name="joystick" pkg="ur10_teleop_interface" type="joystick.py" output="log"/>
+
+    <!-- keyboard node -->
+    <node name="keyboard" pkg="ur10_teleop_interface" type="keyboard.py" output="log"/>
+
+    <!-- mode manager node -->
+    <node name="mode_manager" pkg="ur10_teleop_interface" type="mode_manager.py" output="log"/>
+
+    <!-- delta_target_input node -->
+    <node name="delta_target_input" pkg="ur10_teleop_interface" type="delta_target_input.py" output="log"/>
+
+    <!-- delta_target_haptic node -->
+    <node name="haptic_target_pose" pkg="ur10_teleop_interface" type="haptic_target_pose.py" output="screen"/>
+
+    <!-- target pose node -->
+    <node name="target_pose" pkg="ur10_teleop_interface" type="target_pose.py" output="log"/>
+    
+    <!-- taks to joint node -->
+    <node name="task2joint" pkg="ur10_teleop_interface" type="task2joint" output="log"/>
+
+    <!-- teleop controller -->
+    <node name="teleop_controller" pkg="ur10_teleop_interface" type="teleop_controller.py" output="log"/> 
+
+</launch>
