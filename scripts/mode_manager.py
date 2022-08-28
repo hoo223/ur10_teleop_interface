@@ -25,6 +25,7 @@ INIT = 'init'
 TELEOP = 'teleop'
 CONTROL = 'control'
 RL = 'rl'
+RESET = 'reset'
 
 
 ## class definition
@@ -53,6 +54,16 @@ class ModeManager(object):
     return res.success 
 
   def init_pose(self):
+    res = self.change_to_base_controller("")
+    if res.success:
+      print(res.message)
+      reset_pose_service = rospy.ServiceProxy(self.prefix+'/init_pose', Trigger)
+      req = TriggerRequest()
+      res = reset_pose_service(req)
+      success = res.success
+    return success
+  
+  def reset_pose(self):
     res = self.change_to_base_controller("")
     if res.success:
       print(res.message)

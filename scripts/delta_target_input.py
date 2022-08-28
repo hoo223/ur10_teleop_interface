@@ -6,6 +6,7 @@ INIT = 'init'
 TELEOP = 'teleop'
 CONTROL = 'control'
 RL = 'rl'
+RESET = 'reset'
 
 ## standard library
 import numpy as np

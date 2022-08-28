@@ -441,11 +441,21 @@ class MoveGroupPythonInteface(object):
     current_RPY = euler_from_quaternion(self.xyzw_array(current_orientation))
     print(current_RPY, type(current_RPY))
 
-  def reset_pose(self, req):
+  def init_pose(self, req):
     print("reset pose service")
     while not self.go_to_init_state():
       print("Failed to go to init state")
     print("Success to get init state!")
+    res = TriggerResponse()
+    res.success = True
+    res.message = "init pose"
+    return res
+  
+  def reset_pose(self, req):
+    print("reset pose service")
+    while not self.go_to_init_state([0, 0, 0, 0, 0, 0]):
+      print("Failed to go to reset state")
+    print("Success to get reset state!")
     res = TriggerResponse()
     res.success = True
     res.message = "reset pose"
