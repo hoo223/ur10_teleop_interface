@@ -41,7 +41,9 @@ class TeleopController(object):
     self.prefix = prefix
     self.target_joints = np.zeros(6)
     self.current_joints = np.zeros(6)
-    self.p_gain = 5
+    self.p_gain = rospy.get_param(prefix+"/task_p_gain", 5)
+    self.d_gain = rospy.get_param(prefix+"/task_p_gain", 1)
+    self.pre_joint_errors = np.zeros(6)
     self.joint_vel_msg = Float64MultiArray()  
     self.teleop_state = 'stop'
     
@@ -64,7 +66,8 @@ class TeleopController(object):
     try:
       # compute control input
       joint_errors = np.array(self.target_joints) - np.array(self.current_joints)
-      self.joint_vel_msg.data = self.p_gain*joint_errors
+      self.joint_vel_msg.data = self.p_gain*joint_errors + self.d_gain*(joint_errors-self.pre_joint_errors)
+      self.pre_joint_errors = joint_errors
       # self.joint_vel_msg.data[3] = 0
       # self.joint_vel_msg.data[4] = 0
       # self.joint_vel_msg.data[5] = 0

@@ -39,7 +39,8 @@ class inputTarget(object):
     self.joystick_command[6] = -0.1
     self.keyboard_command = np.zeros(7)
     self.keyboard_command[6] = -0.1
-    self.speed_gain = 0.00024 # for input scale
+    self.input_pos_gain = rospy.get_param(prefix+"input_pos_gain", 0.00004)
+    self.input_ori_gain = rospy.get_param(prefix+"input_ori_gain", 0.00008)
     self.speed_level = 5 # 로봇 움직임 속도 - 1~10 단계
 
     # subscriber
@@ -78,24 +79,25 @@ class inputTarget(object):
     # change speed
     if button != self.pre_button: # restrict the continuous change
       if button == 5:
-        self.speed_level += 1
-        if self.speed_level > 10:
-          self.speed_level = 10
+        self.speed_level += 0.1
+        if self.speed_level > 20:
+          self.speed_level = 20
       elif button == 4:
-        self.speed_level -= 1
-        if self.speed_level < 1:
-          self.speed_level = 1
+        self.speed_level -= 0.1
+        if self.speed_level < 0:
+          self.speed_level = 0
       self.pre_button = button
 
-    input_scale = self.speed_gain * self.speed_level
+    position_scale = self.input_pos_gain * self.speed_level
+    orientation_scale = self.input_ori_gain * self.speed_level
     
     delta_target = []
-    delta_target.append(x_input * input_scale)
-    delta_target.append(y_input * input_scale)
-    delta_target.append(z_input * input_scale)
-    delta_target.append(roll_input * input_scale)
-    delta_target.append(pitch_input * input_scale)
-    delta_target.append(yaw_input * input_scale)
+    delta_target.append(x_input * position_scale)
+    delta_target.append(y_input * position_scale)
+    delta_target.append(z_input * position_scale)
+    delta_target.append(roll_input * orientation_scale)
+    delta_target.append(pitch_input * orientation_scale)
+    delta_target.append(yaw_input * orientation_scale)
 
     return delta_target
 
