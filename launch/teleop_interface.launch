@@ -1,12 +1,6 @@
 <?xml version="1.0"?>
 <launch>
 
-    <!-- rviz -->
-    <node name='cam1' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/cam1.rviz'/>>
-    <node name='cam2' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/cam2.rviz'/>>
-    <node name='cam3' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/cam3.rviz'/>>
-    <node name='cam4' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/cam4.rviz'/>>
-
     <!-- joystick node -->
     <node name="joystick" pkg="ur10_teleop_interface" type="joystick.py" output="log"/>
 
