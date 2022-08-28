@@ -147,25 +147,28 @@ class ModeManager(object):
 
 
 def main():
-  # args = rospy.myargv()
-  # if len(args) > 1: 
-  #   prefix = '/'+args[1]
-  # else:
-  #   prefix = ''
-    
-  prefix = rospy.get_param("prefix", '')
-  base_controller = rospy.get_param("base_controller", "arm_controller") # sim: "arm_controller" / real: "scaled_pos_joint_traj_controller"
-  velocity_controller = rospy.get_param("velocity_controller", "joint_group_vel_controller") 
+  args = rospy.myargv()
+  if len(args) > 1: 
+    prefix = '/'+args[1]
+  else:
+    prefix = ''
+  print(prefix)
+
+  base_controller = rospy.get_param(prefix+"/base_controller", prefix+"/arm_controller") # sim: "arm_controller" / real: "scaled_pos_joint_traj_controller"
+  velocity_controller = rospy.get_param(prefix+"/velocity_controller", prefix+"/joint_group_vel_controller") 
+  print(base_controller)
   
-  interface_param = '/move_group_python_interface'
+  interface_param = prefix + '/move_group_python_interface'
+  print(interface_param, rospy.get_param(interface_param))
+  
 
   rospy.init_node("mode_manager", anonymous=True)
   rate = rospy.Rate(1100)
   mm = ModeManager(prefix, base_controller, velocity_controller) 
 
   # wait for initializing the interface
-  while rospy.get_param(prefix+interface_param) != 'ready':
-    print(prefix+interface_param + " not ready")
+  while rospy.get_param(interface_param, 'not ready') != 'ready':
+    print(interface_param + " not ready")
 
   ## set init pose
   while not mm.init_pose():
@@ -173,20 +176,30 @@ def main():
   print("Success to get init state!")
 
   while not rospy.is_shutdown(): 
-    mode = rospy.get_param("mode")
+    mode = rospy.get_param(prefix+"/mode")
     #print(mode)
     if mode == INIT:
       if mm.button == 7.0:
         mm.start_teleop()
-        rospy.set_param('/mode', 'teleop')
+        rospy.set_param(prefix+'/mode', 'teleop')
+      elif mm.button == 10.0:
+        mm.reset_pose()
+        rospy.set_param(prefix+'/mode', 'reset')
     elif mode == TELEOP:
       if mm.button == 6.0:
         mm.init_pose()
-        rospy.set_param('/mode', 'init')
+        rospy.set_param(prefix+'/mode', 'init')
+      elif mm.button == 10.0:
+        mm.reset_pose()
+        rospy.set_param(prefix+'/mode', 'reset')
     elif mode == CONTROL:
       pass
     elif mode == RL:
       pass
+    elif mode == RESET:
+      if mm.button == 6.0:
+        mm.init_pose()
+        rospy.set_param(prefix+'/mode', 'init')
       
   # Reset for singularity 
       

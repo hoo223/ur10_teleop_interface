@@ -111,7 +111,8 @@ class MoveGroupPythonInteface(object):
     self.teleop_state_pub = rospy.Publisher('teleop_state', String, queue_size=10)
 
     # service
-    self.reset_pose_service = rospy.Service('reset_pose', Trigger, self.reset_pose)
+    self.reset_pose_service = rospy.Service(prefix+'/reset_pose', Trigger, self.reset_pose)
+    self.reset_pose_service = rospy.Service(prefix+'/init_pose', Trigger, self.init_pose)
     
     ## Getting Basic Information
     # We can get the name of the reference frame for this robot:
@@ -466,8 +467,11 @@ class MoveGroupPythonInteface(object):
 
 
 def main():
-      
-  prefix = rospy.get_param("prefix", '')
+  args = rospy.myargv()
+  if len(args) > 1: 
+    prefix = '/'+args[1]
+  else:
+    prefix = ''
   
   mgpi = MoveGroupPythonInteface(gym=False, # unpause 일때만 가능, gym 환경에서 사용할 경우 gym=True
                                   prefix=prefix) 

@@ -175,19 +175,24 @@ class hapticTargetPose(object):
      
     
 def main():
+  args = rospy.myargv()
+  if len(args) > 1: 
+    prefix = '/'+args[1]
+  else:
+    prefix = ''
+      
   # Get params
-  prefix = rospy.get_param("prefix", "")
-  env = rospy.get_param("env")
-  haptic_feedback = rospy.get_param("haptic_feedback")
-  init_pose = rospy.get_param("init_pose")
-  init_joint_states = rospy.get_param("init_joint_states")
+  env = rospy.get_param(prefix+"/env")
+  haptic_feedback = rospy.get_param(prefix+"/haptic_feedback")
+  init_pose = rospy.get_param(prefix+"/init_pose")
+  init_joint_states = rospy.get_param(prefix+"/init_joint_states")
 
   rospy.init_node("haptic_target_pose", anonymous=True) # Node initialization
   ht = hapticTargetPose(init_pose, init_joint_states, env, prefix=prefix) # Class instantiation
   rate = rospy.Rate(250) # Set loop period
   
   while not rospy.is_shutdown():
-    mode = rospy.get_param("mode")
+    mode = rospy.get_param(prefix+"/mode")
     if mode == INIT:
       ht.init_mode()
     elif mode == TELEOP:

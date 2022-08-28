@@ -99,13 +99,17 @@ class TeleopController(object):
 
 # main function
 def main():
-  prefix = ''
+  args = rospy.myargv()
+  if len(args) > 1: 
+    prefix = '/'+args[1]
+  else:
+    prefix = ''
   
   rospy.init_node("teleop_controller", anonymous=True)
   tc = TeleopController(prefix=prefix)
   rate = rospy.Rate(250)
   while not rospy.is_shutdown():
-    mode = rospy.get_param("mode")
+    mode = rospy.get_param(prefix+"/mode")
     if mode == TELEOP:
       tc.control_loop()
     rate.sleep()

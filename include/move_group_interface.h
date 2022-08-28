@@ -82,12 +82,12 @@ public:
       arm_state_sub = n.subscribe<sensor_msgs::JointState>(prefix+"/joint_states", 10, boost::bind(&Move_Group_Interface::jointStateWithGripperCallback, this, _1));
     else
       arm_state_sub = n.subscribe<sensor_msgs::JointState>(prefix+"/joint_states", 10, boost::bind(&Move_Group_Interface::jointStateCallback, this, _1));
-    target_pose_sub = n.subscribe<geometry_msgs::Pose>("/target_pose", 10, boost::bind(&Move_Group_Interface::targetPoseCallback, this, _1));
+    target_pose_sub = n.subscribe<geometry_msgs::Pose>(prefix+"/target_pose", 10, boost::bind(&Move_Group_Interface::targetPoseCallback, this, _1));
 
     // publisher
-    m_index_pub = n.advertise<std_msgs::Float64>("m_index", 10); // manipulability index publisher
-    eigen_value_pub = n.advertise<std_msgs::Float64MultiArray>("eigen_value", 10); // 
-    self_collision_pub = n.advertise<std_msgs::Bool>("self_collision", 10);
+    m_index_pub = n.advertise<std_msgs::Float64>(prefix+"m_index", 10); // manipulability index publisher
+    eigen_value_pub = n.advertise<std_msgs::Float64MultiArray>(prefix+"eigen_value", 10); // 
+    self_collision_pub = n.advertise<std_msgs::Bool>(prefix+"self_collision", 10);
     
   }
 

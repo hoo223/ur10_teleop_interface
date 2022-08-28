@@ -18,8 +18,9 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "task2joint", ros::init_options::NoRosout);
   ros::NodeHandle n;
 
-  std::string prefix = "/"; // / 꼭 넣기 
+  std::string prefix = ""; // / 꼭 넣기 
   if (argc > 1)
+    prefix += "/";
     prefix += argv[1];
 
   ros::AsyncSpinner spinner(1);
@@ -33,7 +34,7 @@ int main(int argc, char** argv)
 
   // ik result publisher
   ros::Publisher ik_result_pub;
-  ik_result_pub = n.advertise<std_msgs::Float64MultiArray>("ik_result", 10);
+  ik_result_pub = n.advertise<std_msgs::Float64MultiArray>(prefix+"/ik_result", 10);
 
   // Loop
   // clock_t start, end;

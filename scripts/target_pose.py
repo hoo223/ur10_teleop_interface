@@ -141,11 +141,16 @@ class targetPose(object):
 
     
 def main():
+  args = rospy.myargv()
+  if len(args) > 1: 
+    prefix = '/'+args[1]
+  else:
+    prefix = ''
+      
   # Get params
-  prefix = rospy.get_param("prefix", "")
-  env = rospy.get_param("env")
-  init_pose = rospy.get_param("init_pose")
-  init_joint_states = rospy.get_param("init_joint_states")
+  env = rospy.get_param(prefix+"/env")
+  init_pose = rospy.get_param(prefix+"/init_pose")
+  init_joint_states = rospy.get_param(prefix+"/init_joint_states")
   
   # Node initialization
   rospy.init_node("input_target", anonymous=True)
@@ -158,7 +163,7 @@ def main():
   
   # Loop
   while not rospy.is_shutdown():
-    mode = rospy.get_param("mode")
+    mode = rospy.get_param(prefix+"/mode")
     if mode == INIT:
       tp.target_pose = copy.deepcopy(tp.init_pose)
       print("target_pose initialized")
