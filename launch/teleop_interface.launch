@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
+    <arg name="prefix" default=""/>
 
     <!-- joystick node -->
     <node name="joystick" pkg="ur10_teleop_interface" type="joystick.py" output="log"/>
@@ -8,21 +9,21 @@
     <node name="keyboard" pkg="ur10_teleop_interface" type="keyboard.py" output="log"/>
 
     <!-- mode manager node -->
-    <node name="mode_manager" pkg="ur10_teleop_interface" type="mode_manager.py" output="log"/>
+    <node name="mode_manager" pkg="ur10_teleop_interface" type="mode_manager.py" args="$(arg prefix)" output="log"/>
 
     <!-- delta_target_input node -->
-    <node name="delta_target_input" pkg="ur10_teleop_interface" type="delta_target_input.py" output="log"/>
+    <node name="delta_target_input" pkg="ur10_teleop_interface" type="delta_target_input.py" args="$(arg prefix)" output="log"/>
 
     <!-- delta_target_haptic node -->
-    <node name="haptic_target_pose" pkg="ur10_teleop_interface" type="haptic_target_pose.py" output="screen"/>
+    <node name="haptic_target_pose" pkg="ur10_teleop_interface" type="haptic_target_pose.py" args="$(arg prefix)" output="log"/>
 
     <!-- target pose node -->
-    <node name="target_pose" pkg="ur10_teleop_interface" type="target_pose.py" output="log"/>
+    <node name="target_pose" pkg="ur10_teleop_interface" type="target_pose.py" args="$(arg prefix)" output="log"/>
     
     <!-- taks to joint node -->
-    <node name="task2joint" pkg="ur10_teleop_interface" type="task2joint" output="log"/>
+    <node name="task2joint" pkg="ur10_teleop_interface" type="task2joint" args="$(arg prefix)" output="log"/>
 
     <!-- teleop controller -->
-    <node name="teleop_controller" pkg="ur10_teleop_interface" type="teleop_controller.py" output="log"/> 
+    <node name="teleop_controller" pkg="ur10_teleop_interface" type="teleop_controller.py" args="$(arg prefix)" output="log"/> 
 
 </launch>

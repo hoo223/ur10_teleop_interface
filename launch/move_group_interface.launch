@@ -1,11 +1,12 @@
 <?xml version="1.0"?>
 <launch>
+    <arg name="prefix" default=""/>
 
     <!-- move_group node -->
     <include file="$(find ur10_2f85_moveit_config)/launch/move_group.launch"/>
 
     <!-- move_group python interface node -->
-    <param name="move_group_python_interface" type="str" value="not ready"/>
-    <node name="move_group_python_interface" pkg="ur10_teleop_interface" type="move_group_python_interface.py" output="screen"/>    
+    <param name="$(arg prefix)/move_group_python_interface" type="str" value="not ready"/>
+    <node name="move_group_python_interface" pkg="ur10_teleop_interface" type="move_group_python_interface.py" args="$(arg prefix)" output="screen"/>    
 
 </launch>
