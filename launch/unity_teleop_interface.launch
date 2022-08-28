@@ -1,0 +1,12 @@
+ <launch>
+    <arg name="prefix" default="unity"/>
+    <group ns="$(arg prefix)">
+        <!-- Run joystick -->
+        <!-- Set param interface, teleop_state -->
+        <!-- Run move_group_python_interface -->
+        <!-- Run mode_manager -->
+        <include file="$(find ur10_teleop_interface)/launch/teleop_interface.launch">
+            <arg name="prefix" value="$(arg prefix)"/>
+        </include>
+    </group>
+ </launch>    

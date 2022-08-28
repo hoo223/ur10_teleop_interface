@@ -1,0 +1,41 @@
+ <launch>
+    <arg name="prefix" default="unity"/>
+    <arg name="limited" default="false"  doc="If true, limits joint range [-PI, PI] on all joints." />
+  
+    <include file="$(find ros_tcp_endpoint)/launch/endpoint.launch"/>
+
+    <group ns="$(arg prefix)">
+        <!-- config parameters -->
+        <include file="$(find ur10_teleop_interface)/launch/unity_config.launch"/>
+
+        <!-- Upload robot description -->
+        <include file="$(find ur_description)/launch/ur10_2f85_upload.launch">
+            <arg name="limited" value="$(arg limited)"/>
+        </include>
+
+        <!-- Run robot_state_publisher -->
+        <!-- Run Fake Calibration -->
+        <!-- Run joint_state_publisher -->
+        <include file="$(find ur_gazebo)/launch/controller_utils.launch"/>
+
+        <!-- Upload controller config -->
+        <rosparam file="$(find ur_gazebo)/controller/arm_controller_ur10_2f85.yaml" command="load"/>
+        
+        <!-- Start and load controllers -->
+        <node name="arm_controller_spawner" pkg="controller_manager" type="controller_manager" args="spawn arm_controller" respawn="false" output="screen"/>
+        <node name="gripper_controller_spawner" pkg="controller_manager" type="controller_manager" args="spawn gripper_controller" respawn="false" output="screen"/>
+        <node name="ros_control_controller_manager" pkg="controller_manager" type="controller_manager" respawn="false" output="screen" args="load joint_group_vel_controller" />
+
+        <!-- Run unity_hardware_interface -->
+        <include file="$(find unity_ros_control)/launch/unity_hardware_interface.launch">
+            <arg name="prefix" value="$(arg prefix)"/>
+        </include>
+
+        <!-- Remap follow_joint_trajectory -->
+        <!-- Run move_group -->
+        <include file="$(find ur10_teleop_interface)/launch/move_group_interface.launch">
+            <arg name="prefix" value="$(arg prefix)"/>
+        </include>
+    </group>
+ 
+ </launch>    
