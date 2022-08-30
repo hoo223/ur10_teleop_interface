@@ -3,10 +3,13 @@
     <arg name="prefix" default=""/>
 
     <!-- move_group node -->
-    <include file="$(find ur10_2f85_moveit_config)/launch/move_group.launch"/>
+    <include if="$(eval prefix == 'real')" file="$(find ur10_2f85_moveit_config_real)/launch/move_group.launch"/>
+    <include unless="$(eval prefix == 'real')" file="$(find ur10_2f85_moveit_config)/launch/move_group.launch"/>
 
     <!-- move_group python interface node -->
     <param name="$(arg prefix)/move_group_python_interface" type="str" value="not ready"/>
+    	
+    
     <node name="move_group_python_interface" pkg="ur10_teleop_interface" type="move_group_python_interface.py" args="$(arg prefix)" output="screen"/>    
 
 </launch>
