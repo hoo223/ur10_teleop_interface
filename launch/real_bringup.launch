@@ -1,0 +1,33 @@
+ <launch>
+    <arg name="prefix" default="real"/>
+    <arg name="limited" default="false"  doc="If true, limits joint range [-PI, PI] on all joints." />
+  
+    <group ns="$(arg prefix)">
+        <!-- config parameters -->
+        <include file="$(find ur10_teleop_interface)/launch/real_config.launch"/>
+
+        <!-- Upload robot description -->
+        <include file="$(find ur_description)/launch/ur10_2f85_upload.launch">
+            <arg name="limited" value="$(arg limited)"/>
+        </include>
+
+        <!-- Run robot_state_publisher -->
+        <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+            <param name="publish_frequency" type="double" value="50.0" />
+            <param name="tf_prefix" type="string" value="" />
+        </node>
+        <!-- Run Fake Calibration -->
+        <node pkg="rostopic" type="rostopic" name="fake_joint_calibration" args="pub /calibrated std_msgs/Bool true" />
+        <!-- Run joint_state_publisher -->
+        <node pkg="ur10_teleop_interface" type="joint_state_integrator.py" name="joint_state_integrator" args="$(arg prefix)" />
+       
+        <!-- Remap follow_joint_trajectory -->
+        <remap from="/real/arm_controller/follow_joint_trajectory" to="/ur10/scaled_pos_joint_traj_controller/follow_joint_trajectory"/>
+        <remap from="/real/joint_group_vel_controller/command" to="/ur10/joint_group_vel_controller/command"/>
+        <!-- Run move_group -->
+        <include file="$(find ur10_teleop_interface)/launch/move_group_interface.launch">
+            <arg name="prefix" value="$(arg prefix)"/>
+        </include>
+    </group>
+ 
+ </launch>    

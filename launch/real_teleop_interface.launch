@@ -1,0 +1,14 @@
+ <launch>
+    <arg name="prefix" default="real"/>
+    <group ns="$(arg prefix)">
+        <!-- Run joystick -->
+        <!-- Set param interface, teleop_state -->
+        <!-- Run move_group_python_interface -->
+        <!-- Run mode_manager -->
+        <remap from="/real/joint_group_vel_controller/command" to="/ur10/joint_group_vel_controller/command"/>
+        <include file="$(find ur10_teleop_interface)/launch/teleop_interface.launch">
+            <arg name="prefix" value="$(arg prefix)"/>
+        </include>
+
+    </group>
+ </launch>    
