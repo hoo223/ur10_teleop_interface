@@ -35,7 +35,12 @@ class ModeManager(object):
     super(ModeManager, self).__init__()
 
     self.button = 0.0
-    self.prefix = prefix
+    if prefix == "/real":
+      self.move_group_prefix = "/real"
+      self.controller_prefix = "/ur10"
+    else:
+      self.move_group_prefix = prefix
+      self.controller_prefix = prefix
     self.base_controller = base_controller
     self.velocity_controller = velocity_controller
 
@@ -45,19 +50,21 @@ class ModeManager(object):
 
     
     # service
-    self.change_to_vel_controller_service = rospy.Service('change_to_vel_controller', Trigger, self.change_to_velocity_controller)
-    self.change_to_base_controller_service = rospy.Service('change_to_base_controller', Trigger, self.change_to_base_controller)
+    self.change_to_vel_controller_service = rospy.Service(self.controller_prefix+'change_to_vel_controller', Trigger, self.change_to_velocity_controller)
+    self.change_to_base_controller_service = rospy.Service(self.controller_prefix+'change_to_base_controller', Trigger, self.change_to_base_controller)
 
   def start_teleop(self):
+    print("start teleop")
     res = self.change_to_velocity_controller("")
     print(res.message)
     return res.success 
 
   def init_pose(self):
+    print("init pose")
     res = self.change_to_base_controller("")
     if res.success:
       print(res.message)
-      reset_pose_service = rospy.ServiceProxy(self.prefix+'/init_pose', Trigger)
+      reset_pose_service = rospy.ServiceProxy(self.move_group_prefix+'/init_pose', Trigger)
       req = TriggerRequest()
       res = reset_pose_service(req)
       success = res.success
@@ -67,7 +74,7 @@ class ModeManager(object):
     res = self.change_to_base_controller("")
     if res.success:
       print(res.message)
-      reset_pose_service = rospy.ServiceProxy(self.prefix+'/reset_pose', Trigger)
+      reset_pose_service = rospy.ServiceProxy(self.move_group_prefix+'/reset_pose', Trigger)
       req = TriggerRequest()
       res = reset_pose_service(req)
       success = res.success
@@ -75,10 +82,12 @@ class ModeManager(object):
   
   # https://answers.ros.org/question/259022/switching-between-controllers-with-ros_control-controller_manager/
   def controller_change(self, current_controller, target_controller):
-    rospy.wait_for_service(self.prefix+'/controller_manager/switch_controller')
+    # print(self.controller_prefix+'/controller_manager/switch_controller')
+    rospy.wait_for_service(self.controller_prefix+'/controller_manager/switch_controller')
+    print(self.controller_prefix+'/controller_manager/switch_controller', " service ready")
     try:
         #create a handle for calling the service
-        switch_controller = rospy.ServiceProxy(self.prefix+'/controller_manager/switch_controller', SwitchController)
+        switch_controller = rospy.ServiceProxy(self.controller_prefix+'/controller_manager/switch_controller', SwitchController)
         # http://docs.ros.org/en/api/controller_manager_msgs/html/srv/SwitchController.html
         req = SwitchControllerRequest()
         req.start_controllers = [target_controller]
@@ -101,17 +110,16 @@ class ModeManager(object):
         return False
 
   def change_to_velocity_controller(self, req):
+    print("change to ", self.velocity_controller)
     self.controller_change(self.base_controller, self.velocity_controller)
-    #self.controller_change(self.base_controller, self.velocity_controller, mode="/unity")
     res = TriggerResponse()
     res.success = True
     res.message = "changed to velocity controller"
     return res
 
   def change_to_base_controller(self, req):
-    print("come in")
+    print("change to ", self.base_controller)
     self.controller_change(self.velocity_controller, self.base_controller)
-    #self.controller_change(self.velocity_controller, self.base_controller, mode="/unity")
     res = TriggerResponse()
     res.success = True
     res.message = "changed to base controller"
