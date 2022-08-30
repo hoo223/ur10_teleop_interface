@@ -54,16 +54,10 @@ class inputTarget(object):
   def input_conversion(self, command):
 
     # joystick action to input mapping
-    if self.env == 'unity':
-      x_input = command[1]
-      y_input = command[0]
-      z_input = command[2]
-      yaw_input = command[5]
-    else:
-      x_input = command[1]
-      y_input = command[0]
-      z_input = -command[2]
-      yaw_input = -command[5]
+    x_input = command[1]
+    y_input = command[0]
+    z_input = command[2]
+    yaw_input = -command[5]
     roll_input = pitch_input = 0
     
     button = int(command[6])
