@@ -14,6 +14,9 @@ class jointStateIntegrator(object):
     self.prefix = prefix
     self.ur10_joint_states = JointState()
     self.gripper_joint_states = JointState()
+    self.gripper_joint_states.position = [0.0]
+    self.gripper_joint_states.velocity = [0.0]
+    self.gripper_joint_states.effort = [0.0]
         
     # subscriber
     self.ur10_joint_states_sub = rospy.Subscriber('/ur10/joint_states', JointState, self.ur10_joint_states_callback)
