@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="prefix" default=""/>
+
+    <!-- arm state publisher node -->
+    <node name="arm_state_publisher" pkg="ur10_teleop_interface" type="arm_state_publisher" args="$(arg prefix)" output="log"/>
+
+    <!-- safety checker node -->
+    <node name="safety_checker" pkg="ur10_teleop_interface" type="safety_checker.py" args="$(arg prefix)" output="screen"/>
+
+</launch>

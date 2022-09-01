@@ -81,9 +81,9 @@ public:
     target_pose_sub = n.subscribe<geometry_msgs::Pose>(prefix+"/target_pose", 10, boost::bind(&Move_Group_Interface::targetPoseCallback, this, _1));
 
     // publisher
-    m_index_pub = n.advertise<std_msgs::Float64>(prefix+"m_index", 10); // manipulability index publisher
-    eigen_value_pub = n.advertise<std_msgs::Float64MultiArray>(prefix+"eigen_value", 10); // 
-    self_collision_pub = n.advertise<std_msgs::Bool>(prefix+"self_collision", 10);
+    m_index_pub = n.advertise<std_msgs::Float64>(prefix+"/m_index", 10); // manipulability index publisher
+    eigen_value_pub = n.advertise<std_msgs::Float64MultiArray>(prefix+"/eigen_value", 10); // 
+    self_collision_pub = n.advertise<std_msgs::Bool>(prefix+"/self_collision", 10);
     
   }
 
@@ -95,7 +95,7 @@ public:
   bool solve_ik_srv(ur10_teleop_interface::SolveIk::Request &req, ur10_teleop_interface::SolveIk::Response &res);
 
   // method
-  void check_self_collision(void);
+  bool check_self_collision(void);
   bool solve_ik(geometry_msgs::Pose end_pose);
   
 
@@ -224,11 +224,12 @@ void Move_Group_Interface::targetPoseCallback(const geometry_msgs::PoseConstPtr&
 }
 
 // https://github.com/ros-planning/moveit_tutorials/blob/master/doc/planning_scene/src/planning_scene_tutorial.cpp
-void Move_Group_Interface::check_self_collision(void)
+bool Move_Group_Interface::check_self_collision(void)
 {
   robot_state::RobotState& current_state = planning_scene.getCurrentStateNonConst();
   current_state.setJointGroupPositions(joint_model_group, current_joint_values);
   collision_result.clear();
   planning_scene.checkSelfCollision(collision_request, collision_result);
   ROS_INFO_STREAM("Test 1: Current state is " << (collision_result.collision ? "in" : "not in") << " self collision");
+  return collision_result.collision;
 }
