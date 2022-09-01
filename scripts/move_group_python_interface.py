@@ -65,17 +65,16 @@ def all_close(goal, actual, tolerance):
 ## class definition
 class MoveGroupPythonInteface(object):
   """MoveGroupPythonInteface"""
-  def __init__(self, arg_group_name="arm", gym=False, verbose=False, prefix=''):
+  def __init__(self, arg_group_name="arm", verbose=False, prefix=''):
     super(MoveGroupPythonInteface, self).__init__()
 
     self.prefix = prefix
+    self.init_joint_states = rospy.get_param(prefix+'/init_joint_states')
     
     ## BEGIN_SUB_TUTORIAL setup
     ##
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     moveit_commander.roscpp_initialize(sys.argv)
-    if gym == False:
-      rospy.init_node("move_group_python_interface", anonymous=True)
 
     ## Instantiate a `RobotCommander`_ object. Provides information such as the robot's
     ## kinematic model and the robot's current joint states
@@ -111,8 +110,8 @@ class MoveGroupPythonInteface(object):
     self.teleop_state_pub = rospy.Publisher('teleop_state', String, queue_size=10)
 
     # service
-    self.reset_pose_service = rospy.Service(prefix+'/reset_pose', Trigger, self.reset_pose)
-    self.reset_pose_service = rospy.Service(prefix+'/init_pose', Trigger, self.init_pose)
+    self.reset_pose_service = rospy.Service(prefix+'/reset_pose', Trigger, self.reset_pose_srv)
+    self.reset_pose_service = rospy.Service(prefix+'/init_pose', Trigger, self.init_pose_srv)
     
     ## Getting Basic Information
     # We can get the name of the reference frame for this robot:
@@ -131,14 +130,9 @@ class MoveGroupPythonInteface(object):
     self.planning_frame = planning_frame
     self.eef_link = eef_link
     self.group_names = group_names
-    #self.ik_solver = ik_solver
     self.xyzw_array = lambda o: numpy.array([o.x, o.y, o.z, o.w])
     self.fpsClock = pygame.time.Clock()
     self.verbose = verbose
-
-    # teleop parameters  
-    rospy.set_param(self.prefix+'/teleop_state', 'stop')
-    self.teleop_state = rospy.get_param(self.prefix+'/teleop_state')
     
     
     if self.verbose:
@@ -152,11 +146,12 @@ class MoveGroupPythonInteface(object):
       print(robot.get_current_state())
       print("")
 
-  def go_to_init_state(self, joint_goal=[-1.601372543965475, -1.3494799772845667, -2.0361130873309534, -1.3006231672108264, 1.5698880420405317, 0.09116100519895554]):
+  def go_to_init_state(self, joint_goal=None):
+    # if there is no specific goal
+    if joint_goal is None: 
+      joint_goal = self.init_joint_states
 
     move_group = self.move_group
-    
-    #joint_goal = [-1.5999897112701706, -1.3500032022166835, -2.040067726204013, -1.3188300763644802, 1.6184002310830374, 0.09156995930090517]
     
     move_group.go(joint_goal, wait=True)
 
@@ -175,32 +170,7 @@ class MoveGroupPythonInteface(object):
     
     return all_close(joint_goal, current_joints, 0.05)  
 
-  def go_to_random_init_state(self, joint_goal=[-1.601372543965475, -1.3494799772845667, -2.0361130873309534, 0.25178295286581065, 1.6211304664611816, 0.09116100519895554]):
-    move_group = self.move_group
-
-    rospy.wait_for_service('generate_init_pose')
-    s = rospy.ServiceProxy('generate_init_pose',Trigger)
-    res = s(TriggerRequest())
-    while (not res.success):
-      res = s(TriggerRequest())
-    joint_goal = rospy.get_param('init_pose')
-
-    move_group.go(joint_goal, wait=True)
-    move_group.stop()
-
-    # For testing:
-    current_joints = move_group.get_current_joint_values()
-
-    time.sleep(0.1)
-    # get target pose
-    current_pose = self.get_current_pose(rpy=True)
-    print(current_pose)
-    self.target_pose = current_pose
-    #q_orig = self.xyzw_array(self.get_current_pose().orientation)
-    
-    return all_close(joint_goal, current_joints, 0.05)  
-
-  def go_to_joint_state(self, j1=0, j2=-pi/2, j3=0, j4=-pi/2, j5=0, j6=0):
+  def go_to_joint_state(self, joints):
     # Copy class variables to local variables to make the web tutorials more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
@@ -214,12 +184,12 @@ class MoveGroupPythonInteface(object):
     ## thing we want to do is move it to a slightly better configuration.
     # We can get the joint values from the group and adjust some of the values:
     joint_goal = move_group.get_current_joint_values()
-    joint_goal[0] = j1
-    joint_goal[1] = j2
-    joint_goal[2] = j3
-    joint_goal[3] = j4
-    joint_goal[4] = j5
-    joint_goal[5] = j6
+    joint_goal[0] = joints[0]
+    joint_goal[1] = joints[1]
+    joint_goal[2] = joints[2]
+    joint_goal[3] = joints[3]
+    joint_goal[4] = joints[4]
+    joint_goal[5] = joints[5]
 
     # The go command can be called with joint values, poses, or without any
     # parameters if you have already set the pose or joint target for the group
@@ -385,7 +355,6 @@ class MoveGroupPythonInteface(object):
       roll_pos = current_RPY[0]
       pitch_pos = current_RPY[1]
       yaw_pos = current_RPY[2]
-      
       return np.array([x_pos, y_pos, z_pos, roll_pos, pitch_pos, yaw_pos])
     else:
       return self.move_group.get_current_pose().pose
@@ -441,7 +410,19 @@ class MoveGroupPythonInteface(object):
     current_RPY = euler_from_quaternion(self.xyzw_array(current_orientation))
     print(current_RPY, type(current_RPY))
 
-  def init_pose(self, req):
+  def init_pose(self, joint=None):
+    print("init pose")
+    while not self.go_to_init_state(joint):
+      print("Failed to go to init state")
+    print("Success to get init state!")
+  
+  def reset_pose(self):
+    print("reset pose")
+    while not self.go_to_init_state([0, 0, 0, 0, 0, 0]):
+      print("Failed to go to init state")
+    print("Success to get init state!")
+
+  def init_pose_srv(self, req):
     print("reset pose service")
     while not self.go_to_init_state():
       print("Failed to go to init state")
@@ -451,7 +432,7 @@ class MoveGroupPythonInteface(object):
     res.message = "init pose"
     return res
   
-  def reset_pose(self, req):
+  def reset_pose_srv(self, req):
     print("reset pose service")
     while not self.go_to_init_state([0, 0, 0, 0, 0, 0]):
       print("Failed to go to reset state")
@@ -460,18 +441,7 @@ class MoveGroupPythonInteface(object):
     res.success = True
     res.message = "reset pose"
     return res
-
-  # def joint_velocity_command(self, target_vel): 
-  #   joint_vel_msg = Float64MultiArray() 
-  #   joint_vel_msg.data = target_vel 
-  #   print(target_vel)
-  #   self.vel_pub.publish(joint_vel_msg) 
-
-  # def stop_velocity(self):
-  #   joint_vel_msg = Float64MultiArray()  
-  #   joint_vel_msg.data = np.zeros(6)
-  #   self.vel_pub.publish(joint_vel_msg)
-
+  
   # def timer(self):
   #   print("{:.5f}, {:.2f}".format(self.end - self.start, 1/(self.end - self.start)), end='\r')
 
@@ -482,13 +452,10 @@ def main():
     prefix = '/'+args[1]
   else:
     prefix = ''
-  
-  mgpi = MoveGroupPythonInteface(gym=False, # unpause 일때만 가능, gym 환경에서 사용할 경우 gym=True
-                                  prefix=prefix) 
+
+  mgpi = MoveGroupPythonInteface(prefix=prefix) 
 
   rospy.set_param(prefix+'/move_group_python_interface', 'ready')
-  
-  #mgpi.go_to_init_state()
   
   rospy.spin()
 

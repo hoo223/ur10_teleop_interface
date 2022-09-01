@@ -2,10 +2,14 @@
 # -*- coding: utf8 -*- 
 
 # mode
-INIT = 'init'
-TELEOP = 'teleop'
-CONTROL = 'control'
-RL = 'rl'
+INIT = 0
+TELEOP = 1
+TASK_CONTROL = 2
+JOINT_CONTROL = 3
+RL = 4
+MOVEIT = 5
+IDLE = 6
+RESET = 7
 
 ## standard library
 import numpy as np
@@ -44,7 +48,7 @@ class targetPose(object):
     self.haptic_target_pose_sub = rospy.Subscriber('haptic_target_pose', Float64MultiArray, self.haptic_target_pose_callback)
 
     # publisher
-    self.target_pose_pub = rospy.Publisher("target_pose", Pose, queue_size= 10)
+    self.target_pose_pub = rospy.Publisher("target_pose", Pose, queue_size= 10, latch=False)
 
     # tf listener
     self.listener = tf.TransformListener()
@@ -171,6 +175,7 @@ def main():
       tp.update_target_pose()
       print("target_pose calculated")
       tp.target_pose_pub.publish(tp.ps)
+      
 
     rate.sleep()
 
