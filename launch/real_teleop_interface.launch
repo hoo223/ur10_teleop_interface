@@ -1,6 +1,11 @@
  <launch>
     <arg name="prefix" default="real"/>
     <group ns="$(arg prefix)">
+        <!-- Remap haptic topic -->
+        <remap from="/real/device1/pose" to="/haptic/device1/pose"/>
+        <remap from="/real/device1/joint_states" to="/haptic/device1/joint_states"/>
+        <remap from="/real/device1/button" to="/haptic/device1/button"/>
+        
         <!-- Run joystick -->
         <!-- Set param interface, teleop_state -->
         <!-- Run move_group_python_interface -->
