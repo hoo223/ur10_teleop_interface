@@ -43,8 +43,8 @@ int main(int argc, char** argv)
   // move_group interface 
   Move_Group_Interface move_group_interface("arm", prefix);
 
-  // // IK service
-  // ros::ServiceServer ik_service = n.advertiseService("solve_ik", &Move_Group_Interface::solve_ik, &move_group_interface);
+  // IK service
+  ros::ServiceServer ik_service = n.advertiseService("solve_ik", &Move_Group_Interface::solve_ik_srv, &move_group_interface);
 
   // ik result publisher
   ros::Publisher ik_result_pub;
