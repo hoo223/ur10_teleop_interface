@@ -4,6 +4,7 @@
 
 import numpy as np
 import time
+from collections import defaultdict
 from move_group_python_interface import MoveGroupPythonInteface
 
 ## ros library
@@ -17,16 +18,16 @@ from tf.transformations import quaternion_from_euler
 class GenerateOfflineTrajectory(object):
     """Joystick Controller for Lunar Lander."""
 
-    def __init__(self, episode_num, episode_length, prefix, thread_rate, MoveGroup):
+    def __init__(self, thread_rate, MoveGroup, real = True, unity = True, get_cur=True, get_next=True, get_desired=True, get_reward=False):
       self.thread_rate = thread_rate
-      self.episode_num = episode_num
-      self.episode_length = episode_length
-      self.MGPI = MoveGroup # MoveGroupPythonInteface(base_controller="arm_controller", 
-                            #        velocity_controller="joint_group_vel_controller", 
-                            #        gym=True, # unpause 일때만 가능, gym 환경에서 사용할 경우 gym=True
-                            #        verbose=False,
-                            #        prefix=prefix,
-                            #        node_name='robot_interface_yh') 
+      self.rate = rospy.Rate(self.thread_rate) 
+      self.MGPI = MoveGroup 
+      self.real = real
+      self.unity = unity
+      self.get_cur = get_cur
+      self.get_next = get_next
+      self.get_desired = get_desired
+      self.get_reward = get_reward
 
 
     def get_current_robot_pose(self):
@@ -39,19 +40,13 @@ class GenerateOfflineTrajectory(object):
         freq = (2*n-1)*np.pi/T
         return amp, bias, freq
 
-    def generate_init_random_cosine_trajectory_parameter(self,x0,xf,T):
-        amp = (x0-xf)/2
-        bias = (x0+xf)/2
-        freq = np.pi/T
-        return amp, bias, freq
-
     def generate_cosine_trajectory(self,amp, bias, freq, duration):
         t = np.linspace(0,duration,int(duration*self.thread_rate))
         xt = amp*np.cos(t*freq)+bias
         vt = -amp*freq*np.sin(t*freq)
         at = -amp*freq**2*np.cos(t*freq)
         return t,xt,vt,at
-    
+
     def generate_cosine_trajectories(self):
         
         index = 1
@@ -142,8 +137,15 @@ class GenerateOfflineTrajectory(object):
         t,rzt,rzvt,rzat = self.generate_cosine_trajectory(amp[5], bias[5], freq[5], duration[5])
 
         return np.vstack((xt,yt,zt,rxt,ryt,rzt)), len(t)
-  
-  
+
+
+
+    def generate_init_random_cosine_trajectory_parameter(self,x0,xf,T):
+        amp = (x0-xf)/2
+        bias = (x0+xf)/2
+        freq = np.pi/T
+        return amp, bias, freq
+
     def generate_init_cosine_trajectories(self,xf): # initial trajectory는 8초동안 이동함
         duration = np.ones(6,dtype=int) * 8
         x0 = self.get_current_robot_pose()    
@@ -158,13 +160,14 @@ class GenerateOfflineTrajectory(object):
 
         return np.vstack((xt,yt,zt,rxt,ryt,rzt)), len(t)
 
+
     def generate_target_pose(self,traj):
         ik_traj = []
         for i,pose in enumerate(traj.transpose()):
             _pose = self.input_conversion_yh(pose)
             self.target_pose_pub.publish(_pose)
             #print("target_pose calculated")
-            _ik_result=self.solve_ik_by_moveit_yh(_pose)
+            _ik_result=self.check_ik_solution(_pose)
             if _ik_result==False:
                 return False
             else:
@@ -190,7 +193,7 @@ class GenerateOfflineTrajectory(object):
             print("ik failed")
             rospy.set_param(self.prefix+'/teleop_state', "stop")
 
-    def solve_ik_by_moveit_yh(self, target_pose):
+    def check_ik_solution(self, target_pose):
         result = self.ik_solver(target_pose)
         if result.success:# IK가 성공하면 결과를 저장
             _ik_result = Float64MultiArray()
@@ -213,130 +216,153 @@ class GenerateOfflineTrajectory(object):
         ps.orientation = target_orientation
         return ps
 
-    def start_data_collection(self):
-        for i in range(self.episode_num):
-            
-def main():
+    def get_dataset(self,dataset, target_pose, target_vel,target_acc):
+        # state : pose , velocity
+        if self.real:
+            dataset['real_cur_pos'].append()
+            dataset['real_cur_vel'].append()
 
-    gen_traj = GenerateOfflineTrajectory()
-    
-    
-    # prefix 사용하는게 나은지? 
-    while not rospy.is_shutdown():
-        real_mode = rospy.get_param("/real/mode")
-        unity_mode = rospy.get_param("unity/mode")
+        if self.unity:
+            dataset['unity_cur_pos'].append()
+            dataset['unity_cur_vel'].append()
 
-        if real_mode == 'offline' and unity_mode == 'offline':
-            step = 0
-            if step ==0:
-                target_pose = Float64MultiArray()
-                # generate episode trajectory from current robot pose to target pose
-                traj, episode_length = gen_traj.generate_cosine_trajectories()
-                ik_traj = gen_traj.generate_target_pose(traj)
-                if ik_traj == False:
-                    continue
-                print('success generating target trajectory')
+        if self.get_desired:
+            dataset['desired_cur_pos'].append(target_pose)
+            dataset['desired_cur_vel'].append(target_vel)
+            dataset['desired_cur_acc'].append(target_acc)
+
+        if self.get_reward:
+            dataset['reward'].append()
+
+        return dataset
+
+    def arrange_dataset(self, dataset):
+        if self.get_next:
+            if self.real:
+                dataset['real_next_pos'] = dataset['real_cur_pos'][1:]
+                dataset['real_next_vel'] = dataset['real_cur_vel'][1:]
+            if self.unity:
+                dataset['unity_next_pos'] = dataset['unity_cur_pos'][1:]
+                dataset['unity_next_vel'] = dataset['unity_cur_vel'][1:]
+
+        if self.get_cur:
+            if self.real:
+                dataset['real_cur_pos'] = dataset['real_cur_pos'][:-1]
+                dataset['real_cur_vel'] = dataset['real_cur_vel'][:-1]
+            if self.unity:
+                dataset['unity_cur_pos'] = dataset['unity_cur_pos'][:-1]
+                dataset['unity_cur_vel'] = dataset['unity_cur_vel'][:-1]
                 
-                # generate go to initial trajectory from target pose to initial pose
-                init_traj,_ = gen_traj.generate_init_cosine_trajectories(traj[:,0])
-                init_ik_traj = gen_traj.generate_target_pose(init_traj)
-                if init_ik_traj == False:
-                    continue
-                print('success generating initial trajectory')
-            
-        elif status == 'Init Pose':
-            # go to initial pose
-            
-        elif status == 'Target Pose':
-            
-        if step==0: # episode 시작할 때 실행
-        # change controller
-        j2t.MGPI.change_to_base_controller('initial')
-        rospy.set_param(j2t.prefix+'/teleop_state', 'stop')
-        rospy.set_param('/teleop_state', 'stop') 
-        #generate trajectory
-        traj,episode_length = j2t.generate_cosine_trajectories()
-        print('generate trajectory')
-        # check exist ik solution
-        ik_traj = j2t.generate_target_pose(traj)   # 전체 trajectory에 대한 ik를 풀어서 return
-        if ik_traj==False: # ik 실패하면 다시 trajectory 생성하기 위해 step 0 부터 다시 시작
-            continue
-        print('success ik')
-        # check self collision
-        iscollide = j2t.check_self_collision_trajectory(ik_traj)
-        if iscollide==False:
-            continue
-        #initial_traj = j2t.generate_initial_pose_trajectory(ik_traj[0])
-        
-        print('success collision check')
-        
-        #generate go to init trajectory
-        print(traj[:,0])
-        init_traj,_ = j2t.generate_init_cosine_trajectories(traj[:,0])
-        init_ik_traj = j2t.generate_target_pose(init_traj)   # 전체 trajectory에 대한 ik를 풀어서 return
-        if init_ik_traj==False: # ik 실패하면 다시 trajectory 생성하기 위해 step 0 부터 다시 시작
-            continue
-        print('success ik')
-        # check self collision
-        iscollide = j2t.check_self_collision_trajectory(init_ik_traj)
-        if iscollide==False:
-            continue
-        
-        step = step+1  
-        j2t.MGPI.change_to_velocity_controller('target')
-        rospy.set_param(j2t.prefix+'/teleop_state', 'start')      
-        rospy.set_param('/teleop_state', 'start') 
-        '''
-        ## go to initial pose
-        print('go to init pose')
-        res = j2t.MGPI.go_to_init_state(joint_goal=ik_traj[0].data)
-        if res==True:
-            print('arrived init pose')
-            
-            #rate = rospy.Rate(0.2)
-            rate.sleep() 
-            #rate = rospy.Rate(250)
-            step=step+1
-            j2t.MGPI.change_to_velocity_controller('target')
-            rospy.set_param(j2t.prefix+'/teleop_state', 'start')
-            
-        elif res==False:
-            
-            #rate = rospy.Rate(250)
-            rate.sleep()    
-        '''    
-            
-        elif step < 2000:
+        if self.get_desired:
+            dataset['desired_next_pos'] = dataset['desired_cur_pos'][1:]
+            dataset['desired_next_vel'] = dataset['desired_cur_vel'][1:]
+            dataset['desired_next_acc'] = dataset['desired_cur_acc'][1:]
 
-        target_pose = j2t.input_conversion_yh(init_traj[:,step])
-        target_pose = j2t.solve_ik_by_moveit(target_pose)
-        #target_pose = ik_traj[step-1]#[ik_traj[step-1500][0],ik_traj[step-1500][1],ik_traj[step-1500][2],ik_traj[step-1500][3],ik_traj[step-1500][4],ik_traj[step-1500][5]]
-        j2t.ik_result_pub.publish(target_pose)
-        #print(target_pose.data)
+            dataset['desired_cur_pos'] = dataset['desired_cur_pos'][:-1]
+            dataset['desired_cur_vel'] = dataset['desired_cur_vel'][:-1]
+            dataset['desired_cur_acc'] = dataset['desired_cur_acc'][:-1]
 
-        step=step+1
-        #print(str(step)+'  go to target pose')
-        rate.sleep()  
-        elif step==2000:
-        rate = rospy.Rate(0.2)
-        print('arrived init pose')
-        rate.sleep() 
-        rate = rospy.Rate(250)
-        step=step+1
-        print('go to target pose')
-        else: # episode 끝날때까지 target pose 하나씩 sampling
-        target_pose = j2t.input_conversion_yh(traj[:,step-2001])
-        target_pose = j2t.solve_ik_by_moveit(target_pose)
-        #target_pose = ik_traj[step-1]#[ik_traj[step-1500][0],ik_traj[step-1500][1],ik_traj[step-1500][2],ik_traj[step-1500][3],ik_traj[step-1500][4],ik_traj[step-1500][5]]
-        j2t.ik_result_pub.publish(target_pose)
-        #print(target_pose.data)
-        if step-2001==episode_length-1:
-            print('arrived target pose')
-            step=0
-        elif step-2001<episode_length-1:
-            step=step+1
-        #print(str(step)+'  go to target pose')
-        rate.sleep()
+        if self.get_reward:
+            dataset['reward'] = dataset['reward'][:-1]
 
+        return dataset
+
+    def start_data_collection(self, episode_num):
+        datasets = []
+        
+        if self.real:
+            rospy.set_param('real/mode', 'idle') # set velocity to zero
+        if self.unity:
+            rospy.set_param('unity/mode', 'idle')      
+
+        for i in range(episode_num):
+            dataset = defaultdict(list)
+            # generating target trajectory for 5~7 seconds
+            target_traj, target_traj_length = self.generate_cosine_trajectories()
+            ik_target_traj = self.generate_target_pose(target_traj)
+            if ik_target_traj == False:
+                episode_num += 1
+                continue
+            print('success generating target trajectory')
+
+            # generating initial trajectory for 8 seconds
+            init_traj, init_traj_length = self.generate_init_cosine_trajectories(target_traj[:,0])
+            ik_init_traj = self.generate_target_pose(init_traj)
+            if ik_init_traj == False:
+                episode_num += 1
+                continue
+            print('success generating initial trajectory')
+
+            # waiting one second for ready
+            print('wait one second before going to the initial pose')
+            self.rate.sleep(1)
+            
+            if self.real:
+                rospy.set_param('real/mode', 'ik_result')
+            if self.unity:
+                rospy.set_param('unity/mode', 'ik_result')
+
+            print('change idle mode to velocity control mode (joint space)')
+            print('going to the initial pose')
+
+            for j in range(init_traj_length):
+                target_pose = self.input_conversion(init_traj[:,j])
+                target_pose = self.solve_ik_by_moveit(target_pose)
+
+                if self.real:
+                    self.real_ik_result_pub.publish(target_pose)
+                if self.unity:
+                    self.unity_ik_result_pub.publish(target_pose)
+
+                self.rate.sleep(self.thread_rate)  
+            print('arrived at the initial pose')
+
+            self.rate.sleep(1)
+            print('wait one second before going to the target pose')
+            print('going to the target pose')
+
+            for j in range(target_traj_length):
+                target_pose = self.input_conversion(target_traj[:,j])
+                target_pose = self.solve_ik_by_moveit(target_pose)
+
+                if self.real:
+                    self.real_ik_result_pub.publish(target_pose)
+                if self.unity:
+                    self.unity_ik_result_pub.publish(target_pose)
+
+                # dataset is saved by task space format
+                dataset = self.get_dataset(dataset, target_traj[:,j])
+
+                self.rate.sleep(self.thread_rate)        
+            dataset = self.arrange_dataset(dataset)
+            datasets.append(dataset)
+
+            if self.real:
+                rospy.set_param('real/mode', 'idle') # set velocity to zero
+            if self.unity:
+                rospy.set_param('unity/mode', 'idle') 
+
+            print('change velocity control mode (joint space) to idle mode, set velocity zero')
+
+            self.rate.sleep(1)
+            print('wait one second before generating new trajectory')
+
+        return datasets
+
+# question 1 : mode change에 따른 설계가 적절한지
+# question 2 : dataset을 저장하기 위한 data를 불러오는 방식 -> topic?
+
+
+def main():
+    MGPI  = MoveGroupPythonInteface(base_controller="arm_controller", 
+                                    velocity_controller="joint_group_vel_controller", 
+                                    gym=True, # unpause 일때만 가능, gym 환경에서 사용할 경우 gym=True
+                                    verbose=False,
+                                    prefix='real',
+                                    node_name='robot_interface_for_rl')
+
+    gen_traj = GenerateOfflineTrajectory(thread_rate = 250, MoveGroup = MGPI, real = True, unity = True)
+    datasets = gen_traj.start_data_collection(episode_num = 20)
+  
 if __name__ == '__main__':
     main()
