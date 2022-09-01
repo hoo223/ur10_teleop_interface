@@ -17,15 +17,21 @@ from tf.transformations import quaternion_from_euler
 class GenerateOfflineTrajectory(object):
     """Joystick Controller for Lunar Lander."""
 
-    def __init__(self):
-      self.thread_rate = 250
-      self.MGPI = MoveGroupPythonInteface(base_controller="arm_controller", 
-                                    velocity_controller="joint_group_vel_controller", 
-                                    gym=True, # unpause 일때만 가능, gym 환경에서 사용할 경우 gym=True
-                                    verbose=False,
-                                    prefix=prefix,
-                                    node_name='robot_interface_yh') 
-        
+    def __init__(self, episode_num, episode_length, prefix, thread_rate, MoveGroup):
+      self.thread_rate = thread_rate
+      self.episode_num = episode_num
+      self.episode_length = episode_length
+      self.MGPI = MoveGroup # MoveGroupPythonInteface(base_controller="arm_controller", 
+                            #        velocity_controller="joint_group_vel_controller", 
+                            #        gym=True, # unpause 일때만 가능, gym 환경에서 사용할 경우 gym=True
+                            #        verbose=False,
+                            #        prefix=prefix,
+                            #        node_name='robot_interface_yh') 
+
+
+    def get_current_robot_pose(self):
+        return self.MGPI.get_current_pose(rpy=True)
+
     def generate_random_cosine_trajectory_parameter(self,x0,xf,T):
         n = np.random.randint(1,3,6)
         amp = (x0-xf)/2
@@ -40,7 +46,7 @@ class GenerateOfflineTrajectory(object):
         return amp, bias, freq
 
     def generate_cosine_trajectory(self,amp, bias, freq, duration):
-        t = np.linspace(0,duration,duration*250)
+        t = np.linspace(0,duration,int(duration*self.thread_rate))
         xt = amp*np.cos(t*freq)+bias
         vt = -amp*freq*np.sin(t*freq)
         at = -amp*freq**2*np.cos(t*freq)
@@ -55,10 +61,10 @@ class GenerateOfflineTrajectory(object):
         
         inner_range = 0.4
         inner_offset = 0.5
-        
-        r_offset = -1.545
-        p_offset = 0.001
-        y_offset = 1.480
+        initial_pose = self.get_current_robot_pose()
+        r_offset = initial_pose[3]
+        p_offset = initial_pose[4]
+        y_offset = initial_pose[5]
     
         if index==0: # x = 0~1 , y = -1~1, z=-1~1
             x0 = np.random.random(6) * 2*xyz_range - xyz_range
@@ -125,7 +131,7 @@ class GenerateOfflineTrajectory(object):
             xf[4] = np.random.random(1) *2*orientation_range - orientation_range +p_offset
             xf[5] = np.random.random(1) *2*orientation_range - orientation_range +y_offset
         
-        duration = np.ones(6,dtype=int) * int(np.random.random(1)*3+5)
+        duration = np.ones(6,dtype=int) * int(np.random.random(1)*3+5) # target trajectory는 5~7초 동안 이동함, total step = duration * thread_rate
         amp, bias, freq = self.generate_random_cosine_trajectory_parameter(x0,xf,duration)
 
         t,xt,xvt,xat = self.generate_cosine_trajectory(amp[0], bias[0], freq[0], duration[0])
@@ -138,9 +144,9 @@ class GenerateOfflineTrajectory(object):
         return np.vstack((xt,yt,zt,rxt,ryt,rzt)), len(t)
   
   
-    def generate_init_cosine_trajectories(self,xf):
+    def generate_init_cosine_trajectories(self,xf): # initial trajectory는 8초동안 이동함
         duration = np.ones(6,dtype=int) * 8
-        x0 = self.MGPI.get_current_pose(rpy=True)    
+        x0 = self.get_current_robot_pose()    
         amp, bias, freq = self.generate_init_random_cosine_trajectory_parameter(np.asarray(x0),np.asarray(xf),duration)
 
         t,xt,xvt,xat = self.generate_cosine_trajectory(amp[0], bias[0], freq[0], duration[0])
@@ -194,7 +200,8 @@ class GenerateOfflineTrajectory(object):
             print("ik failed")
             #rospy.set_param(self.prefix+'/teleop_state', "stop")
             return False
-    def input_conversion_yh(self,point):
+
+    def input_conversion(self,point):
         q_new = quaternion_from_euler(point[3],point[4], point[5]) # roll, pitch, yaw
         #q_new = quaternion_from_euler(-1.545, 0.001, 1.480) # roll, pitch, yaw
         target_orientation = Quaternion(q_new[0], q_new[1], q_new[2], q_new[3])
@@ -206,49 +213,36 @@ class GenerateOfflineTrajectory(object):
         ps.orientation = target_orientation
         return ps
 
+    def start_data_collection(self):
+        for i in range(self.episode_num):
+            
 def main():
-    args = rospy.myargv()
-    if len(args) > 1: 
-        prefix = '/'+args[1]
-    else:
-        prefix = ''
-    
-    step = 0
-    rospy.init_node("generate_offline_trajectory", anonymous=True) # Node initialization
-
-    env = rospy.get_param(prefix+"/env")
-    haptic_feedback = rospy.get_param(prefix+"/haptic_feedback")
-    init_pose = rospy.get_param(prefix+"/init_pose")
-    init_joint_states = rospy.get_param(prefix+"/init_joint_states")
 
     gen_traj = GenerateOfflineTrajectory()
     
     
-    rate = rospy.Rate(gen_traj.thread_rate)
-    status = 'Not Ready'
-    
-    
-    while status == 'Not Ready':
-        print("Failed to go to init state")
-    
-    status = 'Gen Traj'
-    
+    # prefix 사용하는게 나은지? 
     while not rospy.is_shutdown():
-        target_pose = Float64MultiArray()
-        if status == 'Gen Traj':
-            # generate episode trajectory from current robot pose to target pose
-            traj, episode_length = gen_traj.generate_cosine_trajectories()
-            ik_traj = gen_traj.generate_target_pose(traj)
-            if ik_traj == False:
-                continue
-            print('success generating target trajectory')
-            
-            # generate go to initial trajectory from target pose to initial pose
-            init_traj,_ = gen_traj.generate_init_cosine_trajectories(traj[:,0])
-            init_ik_traj = gen_traj.generate_target_pose(init_traj)
-            if init_ik_traj == False:
-                continue
-            print('success generating initial trajectory')
+        real_mode = rospy.get_param("/real/mode")
+        unity_mode = rospy.get_param("unity/mode")
+
+        if real_mode == 'offline' and unity_mode == 'offline':
+            step = 0
+            if step ==0:
+                target_pose = Float64MultiArray()
+                # generate episode trajectory from current robot pose to target pose
+                traj, episode_length = gen_traj.generate_cosine_trajectories()
+                ik_traj = gen_traj.generate_target_pose(traj)
+                if ik_traj == False:
+                    continue
+                print('success generating target trajectory')
+                
+                # generate go to initial trajectory from target pose to initial pose
+                init_traj,_ = gen_traj.generate_init_cosine_trajectories(traj[:,0])
+                init_ik_traj = gen_traj.generate_target_pose(init_traj)
+                if init_ik_traj == False:
+                    continue
+                print('success generating initial trajectory')
             
         elif status == 'Init Pose':
             # go to initial pose
