@@ -2,11 +2,14 @@
 # -*- coding: utf8 -*- 
 
 # mode
-INIT = 'init'
-TELEOP = 'teleop'
-CONTROL = 'control'
-RL = 'rl'
-RESET = 'reset'
+INIT = 0
+TELEOP = 1
+TASK_CONTROL = 2
+JOINT_CONTROL = 3
+RL = 4
+MOVEIT = 5
+IDLE = 6
+RESET = 7
 
 ## standard library
 import numpy as np
@@ -75,6 +78,10 @@ class TeleopController(object):
       self.joint_vel_msg.data = np.zeros(6)
     self.vel_pub.publish(self.joint_vel_msg)
 
+  def stop(self):
+    self.joint_vel_msg.data = np.zeros(6)
+    self.vel_pub.publish(self.joint_vel_msg)
+
   def target_joint_callback(self, data):
     self.target_joints = data.data
 
@@ -114,8 +121,11 @@ def main():
   rate = rospy.Rate(250)
   while not rospy.is_shutdown():
     mode = rospy.get_param(prefix+"/mode")
-    if mode == TELEOP:
+    if (mode == TELEOP) or (mode == TASK_CONTROL) or (mode == JOINT_CONTROL):
       tc.control_loop()
+    else:
+      tc.stop()
+      
     rate.sleep()
 
 if __name__ == '__main__':

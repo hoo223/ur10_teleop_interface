@@ -8,6 +8,16 @@
 // Custom
 #include <move_group_interface.h> // Move_Group_Interface class
 
+// Mode
+const int INIT = 0;
+const int TELEOP = 1;
+const int TASK_CONTROL = 2;
+const int JOINT_CONTROL = 3;
+const int RL = 4;
+const int MOVEIT = 5;
+const int IDLE = 6;
+const int RESET = 7;
+
 
 int main(int argc, char** argv)
 {
@@ -17,11 +27,15 @@ int main(int argc, char** argv)
   }
   ros::init(argc, argv, "task2joint", ros::init_options::NoRosout);
   ros::NodeHandle n;
+  int mode;
+  
 
-  std::string prefix = ""; // / 꼭 넣기 
+  std::string prefix = "/"; // / 꼭 넣기 
   if (argc > 1)
-    prefix += "/";
     prefix += argv[1];
+
+  n.getParam(prefix+"/mode", mode);
+  ROS_INFO("%d", mode);
 
   ros::AsyncSpinner spinner(1);
   spinner.start();
@@ -44,12 +58,16 @@ int main(int argc, char** argv)
   ros::Rate loop_rate(250);
   // start = clock(); // 측정 시작
   while (ros::ok()){
-    //ROS_INFO("%f", move_group_interface.target_pose.position.x);
-    success = move_group_interface.solve_ik(move_group_interface.target_pose);
-    if(success)
-      ik_result_pub.publish(move_group_interface.ik_result);
-    loop_rate.sleep();
+    n.getParam(prefix+"/mode", mode);
+    if((mode == TELEOP) || (mode == TASK_CONTROL)){
+      // ROS_INFO("mode %d", mode);
+      success = move_group_interface.solve_ik(move_group_interface.target_pose);
+      if(success)
+        ik_result_pub.publish(move_group_interface.ik_result);
+    }
     
+    loop_rate.sleep();
+
     // end = clock(); // 측정 끝
     // result = (double)(end - start);
     // printf("time: %lf\n", result); //결과 출력

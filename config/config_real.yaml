@@ -1,5 +1,5 @@
 env: "real"
-mode: "init"
+mode: 0 # INIT mode
 haptic_feedback: false
 base_controller: "scaled_pos_joint_traj_controller"
 position_controller: "joint_group_pos_controller"

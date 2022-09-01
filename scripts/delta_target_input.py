@@ -2,11 +2,13 @@
 # -*- coding: utf8 -*- 
 
 # mode
-INIT = 'init'
-TELEOP = 'teleop'
-CONTROL = 'control'
-RL = 'rl'
-RESET = 'reset'
+INIT = 0
+TELEOP = 1
+TASK_CONTROL = 2
+JOINT_CONTROL = 3
+RL = 4
+IDLE = 5
+RESET = 6
 
 ## standard library
 import numpy as np
@@ -158,8 +160,6 @@ def main():
       delta_target_input.data.append(delta_target_joystick[3]+delta_target_keyboard[3])
       delta_target_input.data.append(delta_target_joystick[4]+delta_target_keyboard[4])
       delta_target_input.data.append(delta_target_joystick[5]+delta_target_keyboard[5])
-      #print("delta_target calculated")
-      #print(delta_target_input.data)
       it.delta_target_input_pub.publish(delta_target_input)
     rate.sleep()
 

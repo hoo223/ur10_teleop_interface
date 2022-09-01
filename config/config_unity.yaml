@@ -1,5 +1,5 @@
 env: "unity"
-mode: "init"
+mode: 1 # INIT mode
 haptic_feedback: false
 base_controller: "arm_controller"
 position_controller: "joint_group_pos_controller"
