@@ -2,31 +2,24 @@
 # -*- coding: utf8 -*- 
 
 ## standard library
-import sys
-#print(sys.executable) # python version
-import copy
 from math import *
-#import pygame
-import time
-import numpy as np
-from numpy.linalg import inv, det, svd, eig
 
 ## ros library
 import rospy
 from tf.transformations import *
-from std_msgs.msg import String, Float64MultiArray, Float64, Bool
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
-from geometry_msgs.msg import PoseStamped, Quaternion, Pose
-from geometry_msgs.msg import Quaternion
+from std_msgs.msg import Float64MultiArray
+from std_srvs.srv import Trigger, TriggerResponse
 from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
+from move_group_python_interface import MoveGroupPythonInteface
 
 # mode
-INIT = 'init'
-TELEOP = 'teleop'
-CONTROL = 'control'
-RL = 'rl'
-RESET = 'reset'
-
+INIT = 0
+TELEOP = 1
+TASK_CONTROL = 2
+JOINT_CONTROL = 3
+RL = 4
+MOVEIT = 5
+IDLE = 6
 
 ## class definition
 class ModeManager(object):
@@ -41,44 +34,16 @@ class ModeManager(object):
     else:
       self.move_group_prefix = prefix
       self.controller_prefix = prefix
-    self.base_controller = base_controller
-    self.velocity_controller = velocity_controller
-
+    self.base_controller = rospy.get_param(prefix+"/base_controller", prefix+"/arm_controller") # sim: "arm_controller" / real: "scaled_pos_joint_traj_controller"
+    self.velocity_controller = rospy.get_param(prefix+"/velocity_controller", prefix+"/joint_group_vel_controller") 
+    
     # subscriber
     joystick_command_sub = rospy.Subscriber('joystick_command', Float64MultiArray, self.joystick_command_callback)
     keyboard_command_sub = rospy.Subscriber('keyboard_command', Float64MultiArray, self.keyboard_command_callback)
 
-    
     # service
     self.change_to_vel_controller_service = rospy.Service(self.controller_prefix+'change_to_vel_controller', Trigger, self.change_to_velocity_controller)
     self.change_to_base_controller_service = rospy.Service(self.controller_prefix+'change_to_base_controller', Trigger, self.change_to_base_controller)
-
-  def start_teleop(self):
-    print("start teleop")
-    res = self.change_to_velocity_controller("")
-    print(res.message)
-    return res.success 
-
-  def init_pose(self):
-    print("init pose")
-    res = self.change_to_base_controller("")
-    if res.success:
-      print(res.message)
-      reset_pose_service = rospy.ServiceProxy(self.move_group_prefix+'/init_pose', Trigger)
-      req = TriggerRequest()
-      res = reset_pose_service(req)
-      success = res.success
-    return success
-  
-  def reset_pose(self):
-    res = self.change_to_base_controller("")
-    if res.success:
-      print(res.message)
-      reset_pose_service = rospy.ServiceProxy(self.move_group_prefix+'/reset_pose', Trigger)
-      req = TriggerRequest()
-      res = reset_pose_service(req)
-      success = res.success
-    return success
   
   # https://answers.ros.org/question/259022/switching-between-controllers-with-ros_control-controller_manager/
   def controller_change(self, current_controller, target_controller):
@@ -125,7 +90,6 @@ class ModeManager(object):
     res.message = "changed to base controller"
     return res
 
-
   def joystick_command_callback(self, data):
     self.joystick_command = data.data
     self.button = self.joystick_command[6]
@@ -133,15 +97,6 @@ class ModeManager(object):
   def keyboard_command_callback(self, data):
     self.keyboard_command = data.data
     self.button = self.keyboard_command[6]
-    
-  def m_index_callback(self, data):
-    self.m_index = data.data
-  
-  def eigen_value_callback(self, data):
-    self.eigen_value = data.data
-
-  def self_collision_callback(self, data):
-    self.self_collision = data.data
     
   def check_singularity(self):
     singularity = False
@@ -152,7 +107,6 @@ class ModeManager(object):
 
     e_value.append(m_index)
     e_value.sort()
-    #print(e_value)
 
     # penalty for reaching singularity
     if e_value[0] < 0.03:
@@ -171,60 +125,52 @@ def main():
     prefix = '/'+args[1]
   else:
     prefix = ''
-  print(prefix)
-
-  base_controller = rospy.get_param(prefix+"/base_controller", prefix+"/arm_controller") # sim: "arm_controller" / real: "scaled_pos_joint_traj_controller"
-  velocity_controller = rospy.get_param(prefix+"/velocity_controller", prefix+"/joint_group_vel_controller") 
-  print(base_controller)
-  
-  interface_param = prefix + '/move_group_python_interface'
-  print(interface_param, rospy.get_param(interface_param))
-  
 
   rospy.init_node("mode_manager", anonymous=True)
   rate = rospy.Rate(1100)
-  mm = ModeManager(prefix, base_controller, velocity_controller) 
-
-  # wait for initializing the interface
-  while rospy.get_param(interface_param, 'not ready') != 'ready':
-    print(interface_param + " not ready")
-
+  mm = ModeManager(prefix=prefix) 
+  mgi = MoveGroupPythonInteface(prefix=prefix)
+  
   ## set init pose
-  while not mm.init_pose():
-    print("Failed to go to init state")
-  print("Success to get init state!")
+  mgi.init_pose()
 
+  pre_mode = 0
   while not rospy.is_shutdown(): 
-    mode = rospy.get_param(prefix+"/mode")
-    #print(mode)
-    if mode == INIT:
-      if mm.button == 7.0:
-        mm.start_teleop()
-        rospy.set_param(prefix+'/mode', 'teleop')
-      elif mm.button == 10.0:
-        mm.reset_pose()
-        rospy.set_param(prefix+'/mode', 'reset')
-    elif mode == TELEOP:
-      if mm.button == 6.0:
-        mm.init_pose()
-        rospy.set_param(prefix+'/mode', 'init')
-      elif mm.button == 10.0:
-        mm.reset_pose()
-        rospy.set_param(prefix+'/mode', 'reset')
-    elif mode == CONTROL:
-      pass
-    elif mode == RL:
-      pass
-    elif mode == RESET:
-      if mm.button == 6.0:
-        mm.init_pose()
-        rospy.set_param(prefix+'/mode', 'init')
-      
-  # Reset for singularity 
-      
-    rate.sleep()
-  print("Finished")
+    # mode change by input command
+    if mm.button == 6.0:
+      rospy.set_param(prefix+'/mode', INIT)
+    elif mm.button == 7.0:
+      rospy.set_param(prefix+'/mode', TELEOP)
 
+    # read current mode
+    mode = rospy.get_param(prefix+"/mode")
+    
+    # mode change
+    if mode is not pre_mode:
+      if mode == INIT:
+        print("INIT mode")
+        mm.change_to_base_controller("")
+        mgi.init_pose()
+      elif mode == TELEOP :
+        print("TELEOP mode")
+        mm.change_to_velocity_controller("")
+      elif mode == TASK_CONTROL:
+        mm.change_to_velocity_controller("")
+        print("TASK_CONTROL mode")
+      elif mode == JOINT_CONTROL:
+        mm.change_to_velocity_controller("")
+        print("JOINT_CONTROL mode")
+      elif mode == IDLE:
+        mm.change_to_velocity_controller("")
+        print("IDLE mode")
+      elif mode == MOVEIT:
+        mm.change_to_base_controller("")
+        print("MOVEIT mode")
+      elif mode == RL:
+        print("RL mode")
+      pre_mode = mode
+
+    rate.sleep()
 
 if __name__ == '__main__':
   main()

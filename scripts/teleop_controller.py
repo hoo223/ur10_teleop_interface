@@ -2,11 +2,13 @@
 # -*- coding: utf8 -*- 
 
 # mode
-INIT = 'init'
-TELEOP = 'teleop'
-CONTROL = 'control'
-RL = 'rl'
-RESET = 'reset'
+INIT = 0
+TELEOP = 1
+TASK_CONTROL = 2
+JOINT_CONTROL = 3
+RL = 4
+MOVEIT = 5
+IDLE = 6
 
 ## standard library
 import numpy as np
@@ -46,16 +48,10 @@ class TeleopController(object):
     self.pre_joint_errors = np.zeros(6)
     self.joint_vel_msg = Float64MultiArray()  
     self.teleop_state = 'stop'
-    
-    # gripper
-    self.with_gripper = True #rospy.get_param('/with_gripper')
 
     # subscriber
     self.target_joint_sub = rospy.Subscriber(self.prefix+'/ik_result', Float64MultiArray, self.target_joint_callback)
-    if self.with_gripper:
-      self.current_joint_sub = rospy.Subscriber(self.prefix+'/joint_states', JointState, self.current_joint_with_gripper_callback)
-    else:
-      self.current_joint_sub = rospy.Subscriber(self.prefix+'/joint_states', JointState, self.current_joint_callback)
+    self.current_joint_sub = rospy.Subscriber(self.prefix+'/joint_states', JointState, self.current_joint_callback)
 
     # publisher
     velocity_name = prefix+'/joint_group_vel_controller/command'
@@ -75,21 +71,14 @@ class TeleopController(object):
       self.joint_vel_msg.data = np.zeros(6)
     self.vel_pub.publish(self.joint_vel_msg)
 
+  def stop(self):
+    self.joint_vel_msg.data = np.zeros(6)
+    self.vel_pub.publish(self.joint_vel_msg)
+
   def target_joint_callback(self, data):
     self.target_joints = data.data
-
-  def current_joint_callback(self, data):
-    current_joints = list(data.position)
-    # gazebo에서 나온 joint states 순서가 바뀌어 있음
-    # [elbow_joint, shoulder_lift_joint, shoulder_pan_joint, wrist_1_joint, wrist_2_joint, wrist_3_joint] - 2 1 0 3 4 5 
-    self.current_joints[0] = current_joints[2]
-    self.current_joints[1] = current_joints[1]
-    self.current_joints[2] = current_joints[0]
-    self.current_joints[3] = current_joints[3]
-    self.current_joints[4] = current_joints[4]
-    self.current_joints[5] = current_joints[5]
     
-  def current_joint_with_gripper_callback(self, data):  
+  def current_joint_callback(self, data):  
     current_joints = list(data.position)
     # gazebo에서 나온 joint states 순서가 바뀌어 있음
     # [elbow_joint, robotiq_85_left_knuckle_joint, shoulder_lift_joint, shoulder_pan_joint, wrist_1_joint, wrist_2_joint, wrist_3_joint] - 3 2 0 4 5 6 
@@ -114,8 +103,11 @@ def main():
   rate = rospy.Rate(250)
   while not rospy.is_shutdown():
     mode = rospy.get_param(prefix+"/mode")
-    if mode == TELEOP:
+    if (mode == TELEOP) or (mode == TASK_CONTROL) or (mode == JOINT_CONTROL):
       tc.control_loop()
+    else:
+      tc.stop()
+      
     rate.sleep()
 
 if __name__ == '__main__':

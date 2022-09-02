@@ -1,0 +1,8 @@
+ <launch>
+    <arg name="prefix" default="unity"/>
+    <group ns="$(arg prefix)">
+        <include file="$(find ur10_teleop_interface)/launch/safety_interface.launch">
+            <arg name="prefix" value="$(arg prefix)"/>
+        </include>
+    </group>
+ </launch>    

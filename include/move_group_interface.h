@@ -77,30 +77,25 @@ public:
     current_joint_values.resize(6);
   
     // subscriber
-    with_gripper = true;
-    if(with_gripper)
-      arm_state_sub = n.subscribe<sensor_msgs::JointState>(prefix+"/joint_states", 10, boost::bind(&Move_Group_Interface::jointStateWithGripperCallback, this, _1));
-    else
-      arm_state_sub = n.subscribe<sensor_msgs::JointState>(prefix+"/joint_states", 10, boost::bind(&Move_Group_Interface::jointStateCallback, this, _1));
+    arm_state_sub = n.subscribe<sensor_msgs::JointState>(prefix+"/joint_states", 10, boost::bind(&Move_Group_Interface::jointStateCallback, this, _1));
     target_pose_sub = n.subscribe<geometry_msgs::Pose>(prefix+"/target_pose", 10, boost::bind(&Move_Group_Interface::targetPoseCallback, this, _1));
 
     // publisher
-    m_index_pub = n.advertise<std_msgs::Float64>(prefix+"m_index", 10); // manipulability index publisher
-    eigen_value_pub = n.advertise<std_msgs::Float64MultiArray>(prefix+"eigen_value", 10); // 
-    self_collision_pub = n.advertise<std_msgs::Bool>(prefix+"self_collision", 10);
+    m_index_pub = n.advertise<std_msgs::Float64>(prefix+"/m_index", 10); // manipulability index publisher
+    eigen_value_pub = n.advertise<std_msgs::Float64MultiArray>(prefix+"/eigen_value", 10); // 
+    self_collision_pub = n.advertise<std_msgs::Bool>(prefix+"/self_collision", 10);
     
   }
 
   // topic callback
   void jointStateCallback(const sensor_msgs::JointStateConstPtr& joint_state);
-  void jointStateWithGripperCallback(const sensor_msgs::JointStateConstPtr& joint_state);
   void targetPoseCallback(const geometry_msgs::PoseConstPtr& target_pose);
 
   // service callback
   bool solve_ik_srv(ur10_teleop_interface::SolveIk::Request &req, ur10_teleop_interface::SolveIk::Response &res);
 
   // method
-  void check_self_collision(void);
+  bool check_self_collision(void);
   bool solve_ik(geometry_msgs::Pose end_pose);
   
 
@@ -207,17 +202,6 @@ bool Move_Group_Interface::solve_ik(geometry_msgs::Pose end_pose)
 
 void Move_Group_Interface::jointStateCallback(const sensor_msgs::JointStateConstPtr& joint_state)
 {
-	current_joint_values[0] = joint_state->position[2]; // shoulder_pan_joint
-	current_joint_values[1] = joint_state->position[1]; // shoulder_lift_joint
-	current_joint_values[2] = joint_state->position[0]; // elbow joint
-	current_joint_values[3] = joint_state->position[3]; // wrist_1_joint
-	current_joint_values[4] = joint_state->position[4]; // wrist_2_joint
-	current_joint_values[5] = joint_state->position[5]; // wrist_3_joint
-   
-}
-
-void Move_Group_Interface::jointStateWithGripperCallback(const sensor_msgs::JointStateConstPtr& joint_state)
-{
   current_joint_values[0] = joint_state->position[3]; // shoulder_pan_joint
 	current_joint_values[1] = joint_state->position[2]; // shoulder_lift_joint
 	current_joint_values[2] = joint_state->position[0]; // elbow joint
@@ -240,11 +224,12 @@ void Move_Group_Interface::targetPoseCallback(const geometry_msgs::PoseConstPtr&
 }
 
 // https://github.com/ros-planning/moveit_tutorials/blob/master/doc/planning_scene/src/planning_scene_tutorial.cpp
-void Move_Group_Interface::check_self_collision(void)
+bool Move_Group_Interface::check_self_collision(void)
 {
   robot_state::RobotState& current_state = planning_scene.getCurrentStateNonConst();
   current_state.setJointGroupPositions(joint_model_group, current_joint_values);
   collision_result.clear();
   planning_scene.checkSelfCollision(collision_request, collision_result);
   ROS_INFO_STREAM("Test 1: Current state is " << (collision_result.collision ? "in" : "not in") << " self collision");
+  return collision_result.collision;
 }

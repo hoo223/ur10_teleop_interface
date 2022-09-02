@@ -2,26 +2,22 @@
 # -*- coding: utf8 -*- 
 
 # mode
-INIT = 'init'
-TELEOP = 'teleop'
-CONTROL = 'control'
-RL = 'rl'
-RESET = 'reset'
+INIT = 0
+TELEOP = 1
+TASK_CONTROL = 2
+JOINT_CONTROL = 3
+RL = 4
+MOVEIT = 5
+IDLE = 6
 
 ## standard library
 import numpy as np
-import copy
 
 ## ros library
 import rospy
-import ros
-from rospy.service import ServiceException
-import tf
 from tf.transformations import euler_from_quaternion, quaternion_from_euler, quaternion_multiply
-from std_msgs.msg import Float64MultiArray, String, Header
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
-from sensor_msgs.msg import JointState
-from geometry_msgs.msg import PoseStamped, Quaternion, Pose
+from std_msgs.msg import Float64MultiArray
+from std_srvs.srv import Trigger, TriggerResponse
 
 #from cv_bridge import CvBridge
 
@@ -107,18 +103,6 @@ class inputTarget(object):
     
   def keyboard_command_callback(self, data):
       self.keyboard_command = data.data
-
-  def current_joint_callback(self, data):
-    current_joints = list(data.position)
-    # gazebo에서 나온 joint states 순서가 바뀌어 있음
-    # [elbow_joint, robotiq_85_left_knuckle_joint, shoulder_lift_joint, shoulder_pan_joint,wrist_1_joint, wrist_2_joint, wrist_3_joint] - 2 6 1 0 3 4 5 
-    self.current_joints[0] = current_joints[2]
-    self.current_joints[1] = current_joints[6]
-    self.current_joints[2] = current_joints[1]
-    self.current_joints[3] = current_joints[0]
-    self.current_joints[4] = current_joints[3]
-    self.current_joints[5] = current_joints[4]
-    self.current_joints[6] = current_joints[5]
     
 def main():
   args = rospy.myargv()
@@ -158,8 +142,6 @@ def main():
       delta_target_input.data.append(delta_target_joystick[3]+delta_target_keyboard[3])
       delta_target_input.data.append(delta_target_joystick[4]+delta_target_keyboard[4])
       delta_target_input.data.append(delta_target_joystick[5]+delta_target_keyboard[5])
-      #print("delta_target calculated")
-      #print(delta_target_input.data)
       it.delta_target_input_pub.publish(delta_target_input)
     rate.sleep()
 

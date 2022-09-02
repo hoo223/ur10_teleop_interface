@@ -2,17 +2,16 @@
 # -*- coding: utf8 -*- 
 
 # mode
-INIT = 'init'
-TELEOP = 'teleop'
-CONTROL = 'control'
-RL = 'rl'
-RESET = 'reset'
+INIT = 0
+TELEOP = 1
+TASK_CONTROL = 2
+JOINT_CONTROL = 3
+RL = 4
+MOVEIT = 5
+IDLE = 6
 
 ## standard library
 import numpy as np
-import time
-import os
-import sys
 import copy
 
 ## ros library
@@ -37,15 +36,18 @@ from omni_msgs.msg import OmniButtonEvent
 from move_group_python_interface import MoveGroupPythonInteface
 
 class hapticTargetPose(object):
-  def __init__(self, init_pose, init_joint_states, env, verbose=False, prefix=""):
+  def __init__(self, prefix="", verbose=False):
+
+    # Get params
+    self.prefix = prefix
+    self.env = rospy.get_param(prefix+"/env")
+    self.haptic_feedback = rospy.get_param(prefix+"/haptic_feedback")
+    self.init_joint_states = rospy.get_param(prefix+"/init_joint_states")
 
     # debugging
-    self.verbose = verbose
-    
-    # namespace
-    self.prefix = prefix
+    self.verbose = verbose    
 
-    # haptic variables
+    # variables initialization
     self.grey_button_state = 0
     self.white_button_state = 0
     self.haptic_move_state = False
@@ -56,34 +58,27 @@ class hapticTargetPose(object):
     self.start_target_pos = [0, 0, 0]
     self.haptic_scale_pos = 2 # translation scale factor
     self.haptic_scale_ori = 1 # translation scale factor
-
-    # subscriber
-    self.with_gripper = True
-    self.haptic_pose_sub = rospy.Subscriber('/device1/pose', PoseStamped, self.haptic_pose_callback)
-    self.haptic_joint_states_sub = rospy.Subscriber('/device1/joint_states', JointState, self.haptic_joint_states_callback)
-    self.haptic_button_sub = rospy.Subscriber('/device1/button', OmniButtonEvent, self.haptic_button_callback)
-    self.target_pose_sub = rospy.Subscriber('/target_pose', Pose, self.target_pose_callback)
-
-    # publisher
-    self.delta_target_haptic_pub = rospy.Publisher("delta_target_haptic", Float64MultiArray, queue_size= 10)
-    self.haptic_target_pose_pub = rospy.Publisher("haptic_target_pose", Float64MultiArray, queue_size= 10)
-    self.haptic_error_pub = rospy.Publisher("haptic_error", Float64MultiArray, queue_size=10)
-    self.haptic_rpy_pub = rospy.Publisher("haptic_rpy", Float64MultiArray, queue_size=10)
-
-    # tf listener
-    self.listener = tf.TransformListener()
-    
-    # UR10 initial pose
-    self.init_joint_states = init_joint_states
-    self.current_joint_states = copy.deepcopy(self.init_joint_states)
-
     self.delta_target_haptic = np.zeros(6)
-
+    self.current_joint_states = copy.deepcopy(self.init_joint_states)
     self.wrist_1_joint = self.init_joint_states[3]
     self.wrist_2_joint = self.init_joint_states[4]
     self.wrist_3_joint = self.init_joint_states[5]
 
-  
+    # publisher
+    self.haptic_target_pose_pub = rospy.Publisher(prefix+"/haptic_target_pose", Float64MultiArray, queue_size= 10)
+    # self.haptic_error_pub = rospy.Publisher(prefix+"haptic_error", Float64MultiArray, queue_size=10)
+    # self.haptic_rpy_pub = rospy.Publisher(prefix+"haptic_rpy", Float64MultiArray, queue_size=10)
+
+    # subscriber
+    self.with_gripper = True
+    self.haptic_pose_sub = rospy.Subscriber(prefix+'/device1/pose', PoseStamped, self.haptic_pose_callback)
+    self.haptic_joint_states_sub = rospy.Subscriber(prefix+'/device1/joint_states', JointState, self.haptic_joint_states_callback)
+    self.haptic_button_sub = rospy.Subscriber(prefix+'/device1/button', OmniButtonEvent, self.haptic_button_callback)
+    self.target_pose_sub = rospy.Subscriber(prefix+'/target_pose', Pose, self.target_pose_callback)
+
+    # tf listener
+    self.listener = tf.TransformListener()
+    
   def target_pose_callback(self, data):
     self.target_pose = data
 
@@ -130,7 +125,6 @@ class hapticTargetPose(object):
       #print("both button released")
       self.both_button_pressed = False
     #print(data, self.white_button_pressed, self.grey_button_pressed, self.both_button_pressed)
-    
   
   def init_mode(self):
     self.wrist_1_joint = self.init_joint_states[3]
@@ -174,30 +168,23 @@ class hapticTargetPose(object):
     elif self.env == 'real':
       pass
      
-    
 def main():
   args = rospy.myargv()
   if len(args) > 1: 
     prefix = '/'+args[1]
   else:
     prefix = ''
-      
-  # Get params
-  env = rospy.get_param(prefix+"/env")
-  haptic_feedback = rospy.get_param(prefix+"/haptic_feedback")
-  init_pose = rospy.get_param(prefix+"/init_pose")
-  init_joint_states = rospy.get_param(prefix+"/init_joint_states")
 
   rospy.init_node("haptic_target_pose", anonymous=True) # Node initialization
-  ht = hapticTargetPose(init_pose, init_joint_states, env, prefix=prefix) # Class instantiation
+  ht = hapticTargetPose(prefix=prefix) # Class instantiation
   rate = rospy.Rate(250) # Set loop period
   
   while not rospy.is_shutdown():
-    mode = rospy.get_param(prefix+"/mode")
-    if mode == INIT:
-      ht.init_mode()
-    elif mode == TELEOP:
+    mode = rospy.get_param(prefix+"/mode") 
+    if mode == TELEOP:
       ht.teleop_mode()
+    else:
+      ht.init_mode()
     rate.sleep()
 
 if __name__ == '__main__':

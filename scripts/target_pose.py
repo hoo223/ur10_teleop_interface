@@ -2,41 +2,34 @@
 # -*- coding: utf8 -*- 
 
 # mode
-INIT = 'init'
-TELEOP = 'teleop'
-CONTROL = 'control'
-RL = 'rl'
+INIT = 0
+TELEOP = 1
+TASK_CONTROL = 2
+JOINT_CONTROL = 3
+RL = 4
+MOVEIT = 5
+IDLE = 6
 
 ## standard library
 import numpy as np
-import time
-import os
-import sys
 import copy
 
 ## ros library
 import rospy
-import ros
-from rospy.service import ServiceException
 import tf
-from tf.transformations import euler_from_quaternion, quaternion_from_euler, quaternion_multiply
-from std_msgs.msg import Float64MultiArray, String, Header
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
-from sensor_msgs.msg import JointState
-from geometry_msgs.msg import PoseStamped, Quaternion, Pose
-
-#from cv_bridge import CvBridge
-
-## custom library
-from move_group_python_interface import MoveGroupPythonInteface
+from tf.transformations import quaternion_from_euler
+from std_msgs.msg import Float64MultiArray
+from std_srvs.srv import Trigger, TriggerResponse
+from geometry_msgs.msg import Quaternion, Pose
 
 
 class targetPose(object):
-  def __init__(self, init_pose, init_joint_states, env, verbose=False, prefix=""):
-
+  def __init__(self, verbose=False, prefix=""):
+        
+    # Get params
     self.verbose = verbose
     self.prefix = prefix
-    self.env = env
+    self.env = rospy.get_param(prefix+"/env")
 
     # subscriber
     self.delta_target_input_sub = rospy.Subscriber('delta_target_input', Float64MultiArray, self.delta_target_input_callback)
@@ -44,14 +37,14 @@ class targetPose(object):
     self.haptic_target_pose_sub = rospy.Subscriber('haptic_target_pose', Float64MultiArray, self.haptic_target_pose_callback)
 
     # publisher
-    self.target_pose_pub = rospy.Publisher("target_pose", Pose, queue_size= 10)
+    self.target_pose_pub = rospy.Publisher("target_pose", Pose, queue_size= 10, latch=False)
 
     # tf listener
     self.listener = tf.TransformListener()
     
     # UR10 initial pose
-    self.init_pose = init_pose
-    #self.init_joint_states = init_joint_states
+    self.init_pose = rospy.get_param(prefix+"/init_pose")
+    #self.init_joint_states = rospy.get_param(prefix+"/init_joint_states")
     #self.current_joints = copy.deepcopy(self.init_joint_states)
     self.target_pose = copy.deepcopy(self.init_pose) # input device에 의해 조작되는 end-effector target pose
 
@@ -108,7 +101,6 @@ class targetPose(object):
     ps.orientation = self.target_orientation
     self.ps = ps
 
-
   def reset_target(self, req):
     self.target_pose = self.init_pose
     res = TriggerResponse()
@@ -147,16 +139,11 @@ def main():
   else:
     prefix = ''
       
-  # Get params
-  env = rospy.get_param(prefix+"/env")
-  init_pose = rospy.get_param(prefix+"/init_pose")
-  init_joint_states = rospy.get_param(prefix+"/init_joint_states")
-  
   # Node initialization
   rospy.init_node("input_target", anonymous=True)
   
   # Class instantiation
-  tp = targetPose(init_pose, init_joint_states, env, prefix=prefix)
+  tp = targetPose(prefix=prefix)
   
   # Set loop period
   rate = rospy.Rate(250) 
@@ -171,6 +158,7 @@ def main():
       tp.update_target_pose()
       print("target_pose calculated")
       tp.target_pose_pub.publish(tp.ps)
+      
 
     rate.sleep()
 
