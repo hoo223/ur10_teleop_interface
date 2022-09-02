@@ -372,7 +372,7 @@ class MoveGroupPythonInteface(object):
   def get_current_cartesian_velocity(self):
     jacobian = self.get_current_jacobian()
     velocity = self.current_joint_velocity
-    cartesian_velocity = np.abs(np.matmul(jacobian, velocity))
+    cartesian_velocity = np.matmul(jacobian, velocity)
     #print("{:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}".format(cartesian_velocity[0], cartesian_velocity[1], cartesian_velocity[2], cartesian_velocity[3], cartesian_velocity[4], cartesian_velocity[5]))
     return cartesian_velocity
 
