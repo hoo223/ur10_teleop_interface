@@ -12,9 +12,6 @@ RESET = 6
 
 ## standard library
 import numpy as np
-import time
-import os
-import sys
 import copy
 
 ## ros library

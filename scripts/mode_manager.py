@@ -2,22 +2,13 @@
 # -*- coding: utf8 -*- 
 
 ## standard library
-import sys
-#print(sys.executable) # python version
-import copy
 from math import *
-#import pygame
-import time
-import numpy as np
-from numpy.linalg import inv, det, svd, eig
 
 ## ros library
 import rospy
 from tf.transformations import *
-from std_msgs.msg import String, Float64MultiArray, Float64, Bool
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
-from geometry_msgs.msg import PoseStamped, Quaternion, Pose
-from geometry_msgs.msg import Quaternion
+from std_msgs.msg import Float64MultiArray
+from std_srvs.srv import Trigger, TriggerResponse
 from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
 from move_group_python_interface import MoveGroupPythonInteface
 
