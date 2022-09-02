@@ -7,14 +7,11 @@ TELEOP = 1
 TASK_CONTROL = 2
 JOINT_CONTROL = 3
 RL = 4
-IDLE = 5
-RESET = 6
+MOVEIT = 5
+IDLE = 6
 
 ## standard library
 import numpy as np
-import time
-import os
-import sys
 import copy
 
 ## ros library

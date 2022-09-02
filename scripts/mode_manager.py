@@ -2,22 +2,13 @@
 # -*- coding: utf8 -*- 
 
 ## standard library
-import sys
-#print(sys.executable) # python version
-import copy
 from math import *
-#import pygame
-import time
-import numpy as np
-from numpy.linalg import inv, det, svd, eig
 
 ## ros library
 import rospy
 from tf.transformations import *
-from std_msgs.msg import String, Float64MultiArray, Float64, Bool
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
-from geometry_msgs.msg import PoseStamped, Quaternion, Pose
-from geometry_msgs.msg import Quaternion
+from std_msgs.msg import Float64MultiArray
+from std_srvs.srv import Trigger, TriggerResponse
 from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
 from move_group_python_interface import MoveGroupPythonInteface
 
@@ -29,7 +20,6 @@ JOINT_CONTROL = 3
 RL = 4
 MOVEIT = 5
 IDLE = 6
-RESET = 7
 
 ## class definition
 class ModeManager(object):
@@ -151,8 +141,6 @@ def main():
       rospy.set_param(prefix+'/mode', INIT)
     elif mm.button == 7.0:
       rospy.set_param(prefix+'/mode', TELEOP)
-    elif mm.button == 10.0:
-      rospy.set_param(prefix+'/mode', RESET)
 
     # read current mode
     mode = rospy.get_param(prefix+"/mode")
@@ -167,24 +155,19 @@ def main():
         print("TELEOP mode")
         mm.change_to_velocity_controller("")
       elif mode == TASK_CONTROL:
+        mm.change_to_velocity_controller("")
         print("TASK_CONTROL mode")
-        pass
       elif mode == JOINT_CONTROL:
+        mm.change_to_velocity_controller("")
         print("JOINT_CONTROL mode")
-        pass
       elif mode == IDLE:
+        mm.change_to_velocity_controller("")
         print("IDLE mode")
-        pass
       elif mode == MOVEIT:
-        print("MOVEIT mode")
         mm.change_to_base_controller("")
+        print("MOVEIT mode")
       elif mode == RL:
         print("RL mode")
-        pass
-      elif mode == RESET:
-        print("RESET mode")
-        mm.change_to_base_controller("")
-        mgi.reset_pose()
       pre_mode = mode
 
     rate.sleep()
