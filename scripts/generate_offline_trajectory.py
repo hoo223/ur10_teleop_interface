@@ -6,6 +6,10 @@ import numpy as np
 import time
 from collections import defaultdict
 from move_group_python_interface import MoveGroupPythonInteface
+## standard library
+import sys
+#print(sys.executable) # python version
+import copy
 
 ## ros library
 import rospy
@@ -13,25 +17,46 @@ from sensor_msgs.msg import JointState
 from geometry_msgs.msg import PoseStamped, Quaternion, Pose
 from std_msgs.msg import Float64MultiArray
 from tf.transformations import quaternion_from_euler
+from ur10_teleop_interface.srv import SolveIk 
+# ik 푸는거 사라짐.. movegroup에서도 service 형태가 있었는데 없어졌고
+# ik를 풀어서 pulish to teleop_controller
 
+# movegroup 사용하는거 어케 사용하는지 모르겠음. prefix를 unity로 주면 중복되서 그런건지 안됨
+# 그러면 movegroup은 사용하지 말고 pose, velocity, IK 기능만 따로 여기서 구현?
+# joint state에 joint angle / angular velocity가 있으므로 joint space의 angular velocity에다가 jacobian 곱해서 task space velocity를 얻음?
+# 
+
+# mode
+INIT = 0
+TELEOP = 1
+TASK_CONTROL = 2
+JOINT_CONTROL = 3
+RL = 4
+MOVEIT = 5
+IDLE = 6
+RESET = 7
 
 class GenerateOfflineTrajectory(object):
     """Joystick Controller for Lunar Lander."""
 
-    def __init__(self, thread_rate, MoveGroup, real = True, unity = True, get_cur=True, get_next=True, get_desired=True, get_reward=False):
+    def __init__(self, thread_rate, Unity_MoveGroup, Real_MoveGroup, real = True, unity = True, get_cur=True, get_next=True, get_desired=True, get_reward=False):
       self.thread_rate = thread_rate
       self.rate = rospy.Rate(self.thread_rate) 
-      self.MGPI = MoveGroup 
+      self.Unity_MGPI = Unity_MoveGroup 
+      self.Real_MGPI = Real_MoveGroup
       self.real = real
       self.unity = unity
       self.get_cur = get_cur
       self.get_next = get_next
       self.get_desired = get_desired
       self.get_reward = get_reward
+    
 
-
-    def get_current_robot_pose(self):
-        return self.MGPI.get_current_pose(rpy=True)
+    def get_unity_current_robot_pose(self):
+        return self.Unity_MGPI.get_current_pose(rpy=True)
+    
+    def get_real_current_robot_pose(self):
+        return self.Real_MGPI.get_current_pose(rpy=True)
 
     def generate_random_cosine_trajectory_parameter(self,x0,xf,T):
         n = np.random.randint(1,3,6)
@@ -183,6 +208,15 @@ class GenerateOfflineTrajectory(object):
                 return False
             return True
         
+    def ik_solver(self, target_pose):
+        rospy.wait_for_service('solve_ik')
+        try:
+            solve_ik = rospy.ServiceProxy('solve_ik', SolveIk)
+            res = solve_ik(target_pose)
+            return res
+        except rospy.ServiceException as e:
+            print("Service call failed: %s"%e)    
+        
     def solve_ik_by_moveit(self, target_pose):
         result = self.ik_solver(target_pose)
         ik_result = Float64MultiArray()
@@ -271,9 +305,9 @@ class GenerateOfflineTrajectory(object):
         datasets = []
         
         if self.real:
-            rospy.set_param('real/mode', 'idle') # set velocity to zero
+            rospy.set_param('/real/mode', IDLE) # set velocity to zero
         if self.unity:
-            rospy.set_param('unity/mode', 'idle')      
+            rospy.set_param('/unity/mode', IDLE)      
 
         for i in range(episode_num):
             dataset = defaultdict(list)
@@ -298,9 +332,9 @@ class GenerateOfflineTrajectory(object):
             self.rate.sleep(1)
             
             if self.real:
-                rospy.set_param('real/mode', 'ik_result')
+                rospy.set_param('/real/mode', TASK_CONTROL)
             if self.unity:
-                rospy.set_param('unity/mode', 'ik_result')
+                rospy.set_param('/unity/mode', TASK_CONTROL)
 
             print('change idle mode to velocity control mode (joint space)')
             print('going to the initial pose')
@@ -338,9 +372,9 @@ class GenerateOfflineTrajectory(object):
             datasets.append(dataset)
 
             if self.real:
-                rospy.set_param('real/mode', 'idle') # set velocity to zero
+                rospy.set_param('/real/mode', IDLE) # set velocity to zero
             if self.unity:
-                rospy.set_param('unity/mode', 'idle') 
+                rospy.set_param('/unity/mode', IDLE) 
 
             print('change velocity control mode (joint space) to idle mode, set velocity zero')
 
@@ -349,20 +383,17 @@ class GenerateOfflineTrajectory(object):
 
         return datasets
 
-# question 1 : mode change에 따른 설계가 적절한지
-# question 2 : dataset을 저장하기 위한 data를 불러오는 방식 -> topic?
-
 
 def main():
-    MGPI  = MoveGroupPythonInteface(base_controller="arm_controller", 
-                                    velocity_controller="joint_group_vel_controller", 
-                                    gym=True, # unpause 일때만 가능, gym 환경에서 사용할 경우 gym=True
-                                    verbose=False,
-                                    prefix='real',
-                                    node_name='robot_interface_for_rl')
-
-    gen_traj = GenerateOfflineTrajectory(thread_rate = 250, MoveGroup = MGPI, real = True, unity = True)
-    datasets = gen_traj.start_data_collection(episode_num = 20)
+    rospy.init_node("gen_traj", anonymous=True)
+    rate = rospy.Rate(250)
+    Unity_MGPI  = MoveGroupPythonInteface(prefix='/unity')
+    #Real_MGPI = MoveGroupPythonInteface(prefix = 'real')
+    while not rospy.is_shutdown(): 
+        print(Unity_MGPI.get_current_pose(rpy=True))
+    #gen_traj = GenerateOfflineTrajectory(thread_rate = 250, Unity_MoveGroup = Unity_MGPI, Real_MoveGroup = None, real = False, unity = True)
+    #datasets = gen_traj.start_data_collection(episode_num = 20)
+        rate.sleep()
   
 if __name__ == '__main__':
     main()
