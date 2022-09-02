@@ -16,7 +16,6 @@ const int JOINT_CONTROL = 3;
 const int RL = 4;
 const int MOVEIT = 5;
 const int IDLE = 6;
-const int RESET = 7;
 
 
 int main(int argc, char** argv)

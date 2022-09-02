@@ -1,5 +1,5 @@
 env: "unity"
-mode: 1 # INIT mode
+mode: 0 # INIT = 0 # TELEOP = 1 # TASK_CONTROL = 2 # JOINT_CONTROL = 3 # RL = 4 # MOVEIT = 5 # IDLE = 6
 haptic_feedback: false
 base_controller: "arm_controller"
 position_controller: "joint_group_pos_controller"

@@ -9,7 +9,6 @@ JOINT_CONTROL = 3
 RL = 4
 MOVEIT = 5
 IDLE = 6
-RESET = 7
 
 ## standard library
 import numpy as np
