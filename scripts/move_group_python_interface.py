@@ -91,8 +91,8 @@ class MoveGroupPythonInteface(object):
     ## This interface can be used to plan and execute motions:
     group_name = arg_group_name
     move_group = moveit_commander.MoveGroupCommander(group_name)
-    move_group.set_max_velocity_scaling_factor(1.0)
-    move_group.set_max_acceleration_scaling_factor(1.0)
+    move_group.set_max_velocity_scaling_factor(0.3)
+    move_group.set_max_acceleration_scaling_factor(0.3)
 
     # ik solver
     #ik_solver = GetIK(group="manipulator")
