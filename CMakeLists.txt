@@ -229,8 +229,5 @@ include_directories(${THIS_PACKAGE_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} ${Boost_
 add_executable(task2joint src/task2joint.cpp)
 target_link_libraries(task2joint ${catkin_LIBRARIES})
 
-add_executable(ik_publisher src/ik_publisher.cpp)
-target_link_libraries(ik_publisher ${catkin_LIBRARIES})
-
 add_executable(arm_state_publisher src/arm_state_publisher.cpp)
 target_link_libraries(arm_state_publisher ${catkin_LIBRARIES})
