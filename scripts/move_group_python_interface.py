@@ -15,12 +15,9 @@ from numpy.linalg import inv, det, svd, eig
 ## ros library
 import rospy
 from tf.transformations import *
-from std_msgs.msg import String
-from std_msgs.msg import Float64MultiArray
-from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
-from geometry_msgs.msg import PoseStamped, Quaternion, Pose
+from std_srvs.srv import Trigger, TriggerResponse
 from geometry_msgs.msg import Quaternion
-from controller_manager_msgs.srv import SwitchControllerRequest, SwitchController
+from sensor_msgs.msg import JointState
 import geometry_msgs
 #from ur10_python_interface.srv import SolveIk
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -70,6 +67,7 @@ class MoveGroupPythonInteface(object):
 
     self.prefix = prefix
     self.init_joint_states = rospy.get_param(prefix+'/init_joint_states')
+    self.current_joint_velocity = np.zeros(6)
     
     ## BEGIN_SUB_TUTORIAL setup
     ##
@@ -107,7 +105,8 @@ class MoveGroupPythonInteface(object):
     display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
                                                    moveit_msgs.msg.DisplayTrajectory,
                                                    queue_size=20)
-    self.teleop_state_pub = rospy.Publisher('teleop_state', String, queue_size=10)
+    # subscriber  
+    self.current_joint_state_sub = rospy.Subscriber(self.prefix+'/joint_states', JointState, self.current_joint_state_callback)
 
     # service
     self.reset_pose_service = rospy.Service(prefix+'/reset_pose', Trigger, self.reset_pose_srv)
@@ -145,6 +144,18 @@ class MoveGroupPythonInteface(object):
       print("============ Printing robot state")
       print(robot.get_current_state())
       print("")
+      
+  def current_joint_state_callback(self, data):
+    self.current_joint_states = data
+    current_joint_velocity = list(data.velocity)
+    # gazebo에서 나온 joint states 순서가 바뀌어 있음
+    # [elbow_joint, robotiq_85_left_knuckle_joint, shoulder_lift_joint, shoulder_pan_joint, wrist_1_joint, wrist_2_joint, wrist_3_joint] - 3 2 0 4 5 6 
+    self.current_joint_velocity[0] = current_joint_velocity[3]
+    self.current_joint_velocity[1] = current_joint_velocity[2]
+    self.current_joint_velocity[2] = current_joint_velocity[0]
+    self.current_joint_velocity[3] = current_joint_velocity[4]
+    self.current_joint_velocity[4] = current_joint_velocity[5]
+    self.current_joint_velocity[5] = current_joint_velocity[6]
 
   def go_to_init_state(self, joint_goal=None):
     # if there is no specific goal
@@ -340,7 +351,6 @@ class MoveGroupPythonInteface(object):
     ## first waypoint in the `RobotTrajectory`_ or ``execute()`` will fail
     ## END_SUB_TUTORIAL
 
-
   def get_current_joint_value(self):
     return self.move_group.get_current_joint_values()
 
@@ -358,6 +368,18 @@ class MoveGroupPythonInteface(object):
       return np.array([x_pos, y_pos, z_pos, roll_pos, pitch_pos, yaw_pos])
     else:
       return self.move_group.get_current_pose().pose
+    
+  def get_current_cartesian_velocity(self):
+    jacobian = self.get_current_jacobian()
+    velocity = self.current_joint_velocity
+    cartesian_velocity = np.abs(np.matmul(jacobian, velocity))
+    #print("{:.2f} {:.2f} {:.2f} {:.2f} {:.2f} {:.2f}".format(cartesian_velocity[0], cartesian_velocity[1], cartesian_velocity[2], cartesian_velocity[3], cartesian_velocity[4], cartesian_velocity[5]))
+    return cartesian_velocity
+
+  def get_current_cartesian_state(self):
+    current_pose = self.get_current_pose(rpy=True)
+    current_vel = self.get_current_cartesian_velocity()
+    return np.hstack(current_pose, current_vel)
 
   def get_jacobian(self, joint_values):
     return self.move_group.get_jacobian_matrix(joint_values)
@@ -453,11 +475,18 @@ def main():
   else:
     prefix = ''
 
+
+  rospy.init_node("test_mgi", anonymous=True)
   mgpi = MoveGroupPythonInteface(prefix=prefix) 
 
-  rospy.set_param(prefix+'/move_group_python_interface', 'ready')
+  # Set loop period
+  rate = rospy.Rate(250) 
+  # Loop
+  while not rospy.is_shutdown():
+    #mgpi.get_current_cartesian_velocity()
+    rate.sleep()
   
-  rospy.spin()
+  #rospy.spin()
 
 
 if __name__ == '__main__':
