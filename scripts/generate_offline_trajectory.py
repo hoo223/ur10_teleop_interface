@@ -53,11 +53,6 @@ class GenerateOfflineTrajectory(object):
       self.unity_ik_result_pub = rospy.Publisher('/unity/ik_result', Float64MultiArray, queue_size=10)
       self.real_ik_result_pub = rospy.Publisher('/real/ik_result', Float64MultiArray, queue_size=10)
 
-    def get_unity_current_robot_pose(self):
-        return self.Unity_MGPI.get_current_pose(rpy=True)
-    
-    def get_real_current_robot_pose(self):
-        return self.Real_MGPI.get_current_pose(rpy=True)
 
     def generate_random_cosine_trajectory_parameter(self,x0,xf,T):
         n = np.random.randint(1,3,6)
@@ -75,7 +70,6 @@ class GenerateOfflineTrajectory(object):
 
     def generate_cosine_trajectories(self):
         
-        index = 1
         orientation_range = 0.6
         xyz_range = 0.85
         xyz_offset = 0.5
@@ -84,15 +78,15 @@ class GenerateOfflineTrajectory(object):
         inner_offset = 0.5
         
         if self.unity:
-            initial_pose = self.get_unity_current_robot_pose()    
+            initial_pose = self.Unity_MGPI.get_current_pose(rpy=True) 
         if self.real:
-            initial_pose = self.get_real_current_robot_pose()
+            initial_pose = self.Real_MGPI.get_current_pose(rpy=True)
             
         r_offset = initial_pose[3]
         p_offset = initial_pose[4]
         y_offset = initial_pose[5]
     
-        if index==0: # x = 0~1 , y = -1~1, z=-1~1
+        if self.index==0: # x = 0~1 , y = -1~1, z=-1~1
             x0 = np.random.random(6) * 2*xyz_range - xyz_range
             xf = np.random.random(6) * 2*xyz_range - xyz_range
             x0[0] = np.random.random(1) *inner_range + inner_offset
@@ -108,7 +102,7 @@ class GenerateOfflineTrajectory(object):
             xf[4] = np.random.random(1) *2*orientation_range - orientation_range +p_offset
             xf[5] = np.random.random(1) *2*orientation_range - orientation_range +y_offset
             
-        elif index ==1: # x = -1~1, y = 0~1, z = -1~1
+        elif self.index ==1: # x = -1~1, y = 0~1, z = -1~1
             x0 = np.random.random(6) * 2*xyz_range - xyz_range
             xf = np.random.random(6) * 2*xyz_range - xyz_range
             x0[1] = np.random.random(1) *inner_range + inner_offset
@@ -124,7 +118,7 @@ class GenerateOfflineTrajectory(object):
             xf[4] = np.random.random(1) *2*orientation_range - orientation_range +p_offset
             xf[5] = np.random.random(1) *2*orientation_range - orientation_range +y_offset
             
-        elif index == 2: # x = -1~0, y = -1~1, z = -1~1
+        elif self.index == 2: # x = -1~0, y = -1~1, z = -1~1
             x0 = np.random.random(6) * 2*xyz_range - xyz_range
             xf = np.random.random(6) * 2*xyz_range - xyz_range
             x0[0] = -np.random.random(1) *inner_range - inner_offset
@@ -141,7 +135,7 @@ class GenerateOfflineTrajectory(object):
             xf[4] = np.random.random(1) *2*orientation_range - orientation_range +p_offset
             xf[5] = np.random.random(1) *2*orientation_range - orientation_range +y_offset
             
-        elif index ==3: # x = -1~1, y = -1~0, z = -1~1
+        elif self.index ==3: # x = -1~1, y = -1~0, z = -1~1
             x0 = np.random.random(6) * 2*xyz_range - xyz_range
             xf = np.random.random(6) * 2*xyz_range - xyz_range
             x0[1] = -np.random.random(1) *inner_range - inner_offset
@@ -159,7 +153,7 @@ class GenerateOfflineTrajectory(object):
         
         duration = np.ones(6,dtype=int) * int(np.random.random(1)*3+5) # target trajectory는 5~7초 동안 이동함, total step = duration * thread_rate
         amp, bias, freq = self.generate_random_cosine_trajectory_parameter(x0,xf,duration)
-
+        
         t,xt,xvt,xat = self.generate_cosine_trajectory(amp[0], bias[0], freq[0], duration[0])
         t,yt,yvt,yat = self.generate_cosine_trajectory(amp[1], bias[1], freq[1], duration[1])
         t,zt,zvt,zat = self.generate_cosine_trajectory(amp[2], bias[2], freq[2], duration[2])
@@ -167,7 +161,7 @@ class GenerateOfflineTrajectory(object):
         t,ryt,ryvt,ryat = self.generate_cosine_trajectory(amp[4], bias[4], freq[4], duration[4])
         t,rzt,rzvt,rzat = self.generate_cosine_trajectory(amp[5], bias[5], freq[5], duration[5])
 
-        return np.vstack((xt,yt,zt,rxt,ryt,rzt)), len(t)
+        return np.vstack((xt,yt,zt,rxt,ryt,rzt)), np.vstack((xvt,yvt,zvt,rxvt,ryvt,rzvt)), np.vstack((xat,yat,zat,rxat,ryat,rzat)), len(t)
 
 
 
@@ -180,9 +174,10 @@ class GenerateOfflineTrajectory(object):
     def generate_init_cosine_trajectories(self,xf): # initial trajectory는 8초동안 이동함
         duration = np.ones(6,dtype=int) * 8
         if self.unity:
-            x0 = self.get_unity_current_robot_pose()    
+            x0 = self.Unity_MGPI.get_current_pose(rpy=True) 
         if self.real:
-            x0 = self.get_real_current_robot_pose()
+            x0 = self.Real_MGPI.get_current_pose(rpy=True) 
+            
         amp, bias, freq = self.generate_init_random_cosine_trajectory_parameter(np.asarray(x0),np.asarray(xf),duration)
 
         t,xt,xvt,xat = self.generate_cosine_trajectory(amp[0], bias[0], freq[0], duration[0])
@@ -262,12 +257,12 @@ class GenerateOfflineTrajectory(object):
     def get_dataset(self,dataset, target_pose, target_vel,target_acc):
         # state : pose , velocity
         if self.real:
-            dataset['real_cur_pos'].append()
-            dataset['real_cur_vel'].append()
+            dataset['real_cur_pos'].append(self.Real_MGPI.get_current_pose(rpy=True))
+            dataset['real_cur_vel'].append(self.Real_MGPI.get_current_cartesian_velocity())
 
         if self.unity:
-            dataset['unity_cur_pos'].append(self.Unity_MGPI.get_current_pose)
-            dataset['unity_cur_vel'].append(self.Unity_MGPI.get_current_cartesian_velocity)
+            dataset['unity_cur_pos'].append(self.Unity_MGPI.get_current_pose(rpy=True) )
+            dataset['unity_cur_vel'].append(self.Unity_MGPI.get_current_cartesian_velocity())
 
         if self.get_desired:
             dataset['desired_cur_pos'].append(target_pose)
@@ -310,9 +305,9 @@ class GenerateOfflineTrajectory(object):
 
         return dataset
 
-    def start_data_collection(self, episode_num):
+    def start_data_collection(self, episode_num, index):
         datasets = []
-        
+        self.index = index
         if self.real:
             rospy.set_param('/real/mode', IDLE) # set velocity to zero
         if self.unity:
@@ -323,7 +318,7 @@ class GenerateOfflineTrajectory(object):
         while episode_num > success_episode_count:
             dataset = defaultdict(list)
             # generating target trajectory for 5~7 seconds
-            target_traj, target_traj_length = self.generate_cosine_trajectories()
+            target_traj, traj_vel, traj_acc, target_traj_length = self.generate_cosine_trajectories()
             ik_target_traj = self.generate_target_pose(target_traj)
             if ik_target_traj == False:
                 continue
@@ -363,22 +358,25 @@ class GenerateOfflineTrajectory(object):
             time.sleep(1)
             print('wait one second before going to the target pose')
             print('going to the target pose')
-
+            current = time.time()
             for j in range(target_traj_length):
+        
                 target_pose = self.input_conversion(target_traj[:,j])
                 target_pose = self.solve_ik_by_moveit(target_pose)
-
+                
                 if self.real:
                     self.real_ik_result_pub.publish(target_pose)
                 if self.unity:
                     self.unity_ik_result_pub.publish(target_pose)
 
                 # dataset is saved by task space format
-                #dataset = self.get_dataset(dataset, target_traj[:,j])
-
-                self.rate.sleep()        
-            #dataset = self.arrange_dataset(dataset)
-            #datasets.append(dataset)
+                dataset = self.get_dataset(dataset, target_traj[:,j], traj_vel[:,j],traj_acc[:,j])
+                self.rate.sleep()
+            end = time.time()
+            print(end-current)
+            print(target_traj_length/self.thread_rate)
+            dataset = self.arrange_dataset(dataset)
+            datasets.append(dataset)
 
             if self.real:
                 rospy.set_param('/real/mode', IDLE) # set velocity to zero
@@ -395,16 +393,14 @@ class GenerateOfflineTrajectory(object):
 
 def main():
     rospy.init_node("gen_traj", anonymous=True)
-    #rospy.set_param('/unity/mode', INIT)
+    rospy.set_param('/unity/mode', INIT)
+    time.sleep(5)
+    Unity_MGPI  = MoveGroupPythonInteface(prefix='/unity')
+    #Real_MGPI = MoveGroupPythonInteface(prefix = '/real')
 
-    #Unity_MGPI  = MoveGroupPythonInteface(prefix='/unity')
-    Real_MGPI = MoveGroupPythonInteface(prefix = '/real')
-    #while not rospy.is_shutdown(): 
-        #print(Unity_MGPI.get_current_pose(rpy=True))
-        #print(Unity_MGPI.get_current_cartesian_velocity())
-    gen_traj = GenerateOfflineTrajectory(thread_rate = 250, Unity_MoveGroup = None, Real_MoveGroup = Real_MGPI, real = True, unity = False)
-    datasets = gen_traj.start_data_collection(episode_num = 20)
-    #rate.sleep()
+    gen_traj = GenerateOfflineTrajectory(thread_rate = 25, Unity_MoveGroup = Unity_MGPI, Real_MoveGroup = None, real = False, unity = True)
+    datasets = gen_traj.start_data_collection(episode_num = 20, index = 1)
+
   
 if __name__ == '__main__':
     main()

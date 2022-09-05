@@ -379,7 +379,7 @@ class MoveGroupPythonInteface(object):
   def get_current_cartesian_state(self):
     current_pose = self.get_current_pose(rpy=True)
     current_vel = self.get_current_cartesian_velocity()
-    return np.hstack(current_pose, current_vel)
+    return np.hstack([current_pose, current_vel])
 
   def get_jacobian(self, joint_values):
     return self.move_group.get_jacobian_matrix(joint_values)
