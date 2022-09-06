@@ -21,6 +21,7 @@ from tf.transformations import quaternion_from_euler
 from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Trigger, TriggerResponse
 from geometry_msgs.msg import Quaternion, Pose
+from ur10_teleop_interface.srv import SetTargetPose, SetTargetPoseResponse
 
 
 class targetPose(object):
@@ -44,32 +45,25 @@ class targetPose(object):
     
     # UR10 initial pose
     self.init_pose = rospy.get_param(prefix+"/init_pose")
-    #self.init_joint_states = rospy.get_param(prefix+"/init_joint_states")
-    #self.current_joints = copy.deepcopy(self.init_joint_states)
     self.target_pose = copy.deepcopy(self.init_pose) # input device에 의해 조작되는 end-effector target pose
 
     self.delta_target_input = np.zeros(6)
     self.delta_target_haptic = np.zeros(6)
 
-    # reset target service
-    self.reset_target_service = rospy.Service('reset_target_pose', Trigger, self.reset_target)
+    # Reset target service
+    self.reset_target_service = rospy.Service('reset_target_pose', Trigger, self.reset_target_pose)
+    # Set target service
+    self.reset_target_service = rospy.Service('set_target_pose', SetTargetPose, self.set_target_pose)
 
 
   def update_target_pose(self):
-    
+
     self.target_pose[0] += self.delta_target_input[0]
     self.target_pose[1] += self.delta_target_input[1]
     self.target_pose[2] += self.delta_target_input[2]
     self.target_pose[3] += self.delta_target_input[3]
     self.target_pose[4] += self.delta_target_input[4]
     self.target_pose[5] += self.delta_target_input[5]
-
-    # self.target_pose[0] += self.delta_target_haptic[0]
-    # self.target_pose[1] += self.delta_target_haptic[1]
-    # self.target_pose[2] += self.delta_target_haptic[2]
-    # self.target_pose[3] += self.delta_target_haptic[3]
-    # self.target_pose[4] += self.delta_target_haptic[4]
-    # self.target_pose[5] += self.delta_target_haptic[5]
     
     # print
     if self.verbose:
@@ -101,10 +95,16 @@ class targetPose(object):
     ps.orientation = self.target_orientation
     self.ps = ps
 
-  def reset_target(self, req):
+  def reset_target_pose(self, req):
     self.target_pose = self.init_pose
     res = TriggerResponse()
     res.message = "target pose reset"
+    res.success = True
+    return res
+  
+  def set_target_pose(self, req):
+    self.target_pose = list(req.target_pose.data)
+    res = SetTargetPoseResponse()
     res.success = True
     return res
 
@@ -158,7 +158,6 @@ def main():
       tp.update_target_pose()
       print("target_pose calculated")
       tp.target_pose_pub.publish(tp.ps)
-      
 
     rate.sleep()
 
