@@ -97,11 +97,14 @@ public:
     eigen_value_pub = n.advertise<std_msgs::Float64MultiArray>(prefix+"/eigen_value", 10); // 
     self_collision_pub = n.advertise<std_msgs::Bool>(prefix+"/self_collision", 10);
 
+    n.getParam(prefix+"/init_joint_states", pre_ik_result.data);
+    continuity_threshold = 0.3;
   }
 
   // Method
   bool check_self_collision(void);
   bool solve_ik(geometry_msgs::Pose end_pose);
+  bool check_solution_continuity(void);
   Eigen::MatrixXd getCurrentJacobian(void);
   Eigen::VectorXd getCurrentTaskVelocity(void);
   std_msgs::Float64MultiArray getCurrentPoseRPY(void);
@@ -121,11 +124,12 @@ public:
   collision_detection::CollisionResult collision_result;
   std::vector<std::string> joint_names;
   std::vector<double> current_joint_position, current_joint_velocity;
-  geometry_msgs::Pose target_pose;
+  geometry_msgs::Pose target_pose, valid_target_pose;
   Eigen::Isometry3d pose_in;
   std::vector<double> joint_values;
   bool with_gripper;
-  std_msgs::Float64MultiArray ik_result;
+  std_msgs::Float64MultiArray ik_result, pre_ik_result;
+  double continuity_threshold;
 
   // MoveIt related
   moveit::planning_interface::MoveGroupInterface move_group;
@@ -226,6 +230,15 @@ bool Move_Group_Interface::solve_ik(geometry_msgs::Pose end_pose)
     ROS_INFO("Did not find IK solution");
   }
   return found_ik;
+}
+
+bool Move_Group_Interface::check_solution_continuity(void){
+  bool solution_continuity = true;
+  for(int i=0; i<joint_names.size(); i++){
+    if (abs(ik_result.data[i]-pre_ik_result.data[i]) > continuity_threshold)
+      solution_continuity = false;
+  }
+  return solution_continuity;
 }
 
 void Move_Group_Interface::jointStateCallback(const sensor_msgs::JointStateConstPtr& joint_state)
