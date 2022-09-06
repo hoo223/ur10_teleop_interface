@@ -48,6 +48,7 @@
 #include <std_msgs/Float64.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/JointState.h>
 // Services
 #include <ur10_teleop_interface/SolveIk.h>
@@ -78,7 +79,7 @@ public:
   
     // subscriber
     arm_state_sub = n.subscribe<sensor_msgs::JointState>(prefix+"/joint_states", 10, boost::bind(&Move_Group_Interface::jointStateCallback, this, _1));
-    target_pose_sub = n.subscribe<geometry_msgs::Pose>(prefix+"/target_pose", 10, boost::bind(&Move_Group_Interface::targetPoseCallback, this, _1));
+    target_pose_sub = n.subscribe<geometry_msgs::PoseStamped>(prefix+"/target_pose", 10, boost::bind(&Move_Group_Interface::targetPoseCallback, this, _1));
 
     // publisher
     m_index_pub = n.advertise<std_msgs::Float64>(prefix+"/m_index", 10); // manipulability index publisher
@@ -89,7 +90,6 @@ public:
 
   // topic callback
   void jointStateCallback(const sensor_msgs::JointStateConstPtr& joint_state);
-  void targetPoseCallback(const geometry_msgs::PoseConstPtr& target_pose);
 
   // service callback
   bool solve_ik_srv(ur10_teleop_interface::SolveIk::Request &req, ur10_teleop_interface::SolveIk::Response &res);
@@ -133,6 +133,7 @@ public:
   ros::Publisher eigen_value_pub;
   ros::Publisher self_collision_pub;
   
+  void targetPoseCallback(const geometry_msgs::PoseStampedConstPtr& target_pose);
 private:
 
 };
@@ -216,11 +217,11 @@ void Move_Group_Interface::jointStateCallback(const sensor_msgs::JointStateConst
   // ROS_INFO_STREAM("joint6: " << current_joint_values[5] << "\n"); 
 }
 
-void Move_Group_Interface::targetPoseCallback(const geometry_msgs::PoseConstPtr& target_pose)
+void Move_Group_Interface::targetPoseCallback(const geometry_msgs::PoseStampedConstPtr& target_pose)
 {
   //printf("%.3f, %.3f, %.3f", target_pose->position.x, target_pose->position.y, target_pose->position.z);
   //tf::poseMsgToEigen(*target_pose, pose_in);
-  this->target_pose = *target_pose;
+  this->target_pose = target_pose->pose;
 }
 
 // https://github.com/ros-planning/moveit_tutorials/blob/master/doc/planning_scene/src/planning_scene_tutorial.cpp

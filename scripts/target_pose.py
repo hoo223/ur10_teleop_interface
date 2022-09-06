@@ -20,7 +20,7 @@ import tf
 from tf.transformations import quaternion_from_euler
 from std_msgs.msg import Float64MultiArray
 from std_srvs.srv import Trigger, TriggerResponse
-from geometry_msgs.msg import Quaternion, Pose
+from geometry_msgs.msg import Quaternion, Pose, PoseStamped
 from ur10_teleop_interface.srv import SetTargetPose, SetTargetPoseResponse
 
 
@@ -38,7 +38,7 @@ class targetPose(object):
     self.haptic_target_pose_sub = rospy.Subscriber('haptic_target_pose', Float64MultiArray, self.haptic_target_pose_callback)
 
     # publisher
-    self.target_pose_pub = rospy.Publisher("target_pose", Pose, queue_size= 10, latch=False)
+    self.target_pose_pub = rospy.Publisher("target_pose", PoseStamped, queue_size= 10, latch=False)
 
     # tf listener
     self.listener = tf.TransformListener()
@@ -86,13 +86,15 @@ class targetPose(object):
     # #   self.target_pose[2] = Z_UPPER
 
     # # get IK of target cartesian pose = target joint values
-    ps = Pose()
-    ps.position.x = self.target_pose[0]
-    ps.position.y = self.target_pose[1]
-    ps.position.z = self.target_pose[2]
+    ps = PoseStamped()
+    ps.header.stamp = rospy.Time.now()
+    ps.header.frame_id = 'base_link'
+    ps.pose.position.x = self.target_pose[0]
+    ps.pose.position.y = self.target_pose[1]
+    ps.pose.position.z = self.target_pose[2]
     q_new = quaternion_from_euler(self.target_pose[3], self.target_pose[4], self.target_pose[5]) # roll, pitch, yaw
     self.target_orientation = Quaternion(q_new[0], q_new[1], q_new[2], q_new[3])
-    ps.orientation = self.target_orientation
+    ps.pose.orientation = self.target_orientation
     self.ps = ps
 
   def reset_target_pose(self, req):
