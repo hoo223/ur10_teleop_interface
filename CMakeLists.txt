@@ -77,6 +77,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   FILES
   SolveIk.srv
+  SetTargetPose.srv
 )
 
 ## Generate actions in the 'action' folder

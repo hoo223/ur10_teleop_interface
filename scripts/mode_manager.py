@@ -97,26 +97,6 @@ class ModeManager(object):
   def keyboard_command_callback(self, data):
     self.keyboard_command = data.data
     self.button = self.keyboard_command[6]
-    
-  def check_singularity(self):
-    singularity = False
-    
-    m_index = self.m_index
-    e_value = list(self.eigen_value)
-    self_collision = self.self_collision
-
-    e_value.append(m_index)
-    e_value.sort()
-
-    # penalty for reaching singularity
-    if e_value[0] < 0.03:
-      singularity = True
-    
-    # penalty for self collision
-    if self_collision == True:
-      singularity = True
-      
-    return singularity
 
 
 def main():

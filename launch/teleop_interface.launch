@@ -26,4 +26,10 @@
     <!-- teleop controller -->
     <node name="teleop_controller" pkg="ur10_teleop_interface" type="teleop_controller.py" args="$(arg prefix)" output="log"/> 
 
+    <!-- teleop visualization -->
+    <node name='teleop_visualization' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/visualization.rviz'/>>
+
+    <!-- arm state publisher node -->
+    <node name="arm_state_publisher" pkg="ur10_teleop_interface" type="arm_state_publisher" args="$(arg prefix)" output="log"/>
+
 </launch>
