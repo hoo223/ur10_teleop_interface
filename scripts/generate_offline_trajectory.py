@@ -15,7 +15,7 @@ import copy
 import rospy
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import PoseStamped, Quaternion, Pose
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, Float64
 from tf.transformations import quaternion_from_euler
 from ur10_teleop_interface.srv import SolveIk 
 # ik 푸는거 사라짐.. movegroup에서도 service 형태가 있었는데 없어졌고
@@ -39,11 +39,9 @@ RESET = 7
 class GenerateOfflineTrajectory(object):
     """Joystick Controller for Lunar Lander."""
 
-    def __init__(self, thread_rate, Unity_MoveGroup, Real_MoveGroup, real = True, unity = True, get_cur=True, get_next=True, get_desired=True, get_reward=False):
+    def __init__(self, thread_rate, real = True, unity = True, get_cur=True, get_next=True, get_desired=True, get_reward=False):
       self.thread_rate = thread_rate
       self.rate = rospy.Rate(self.thread_rate) 
-      self.Unity_MGPI = Unity_MoveGroup 
-      self.Real_MGPI = Real_MoveGroup
       self.real = real
       self.unity = unity
       self.get_cur = get_cur
@@ -52,8 +50,37 @@ class GenerateOfflineTrajectory(object):
       self.get_reward = get_reward
       self.unity_ik_result_pub = rospy.Publisher('/unity/ik_result', Float64MultiArray, queue_size=10)
       self.real_ik_result_pub = rospy.Publisher('/real/ik_result', Float64MultiArray, queue_size=10)
+      
+      
+      self.unity_pose_sub = rospy.Subscriber('/unity/current_pose_rpy', Float64MultiArray, self.unity_pose_callback)
+      self.unity_velocity_sub = rospy.Subscriber('/unity/task_velocity', Float64MultiArray, self.unity_velocity_callback)
+      self.unity_m_index_sub = rospy.Subscriber('/unity/m_index', Float64, self.unity_m_index_callback)
+      
+      
+      self.real_pose_sub = rospy.Subscriber('/real/current_pose_rpy', Float64MultiArray, self.real_pose_callback)
+      self.real_velocity_sub = rospy.Subscriber('/real/task_velocity', Float64MultiArray, self.real_velocity_callback)
+      self.real_m_index_sub = rospy.Subscriber('/real/m_index', Float64, self.real_m_index_callback)
+    
 
+        
+    def unity_pose_callback(self, data):
+        self.unity_pose = data.data    
+        
+    def unity_velocity_callback(self, data):
+        self.unity_velocity = data.data
 
+    def unity_m_index_callback(self, data):
+        self.unity_m_index = data.data    
+         
+    def real_pose_callback(self, data):
+        self.real_pose = data.data      
+              
+    def real_velocity_callback(self, data):
+        self.real_velocity = data.data
+
+    def real_m_index_callback(self, data):
+        self.real_m_index = data.data     
+    
     def generate_random_cosine_trajectory_parameter(self,x0,xf,T):
         n = np.random.randint(1,3,6)
         amp = (x0-xf)/2
@@ -76,15 +103,10 @@ class GenerateOfflineTrajectory(object):
         
         inner_range = 0.4
         inner_offset = 0.5
-        
-        if self.unity:
-            initial_pose = self.Unity_MGPI.get_current_pose(rpy=True) 
-        if self.real:
-            initial_pose = self.Real_MGPI.get_current_pose(rpy=True)
             
-        r_offset = initial_pose[3]
-        p_offset = initial_pose[4]
-        y_offset = initial_pose[5]
+        r_offset = self.initial_pose[3]
+        p_offset = self.initial_pose[4]
+        y_offset = self.initial_pose[5]
     
         if self.index==0: # x = 0~1 , y = -1~1, z=-1~1
             x0 = np.random.random(6) * 2*xyz_range - xyz_range
@@ -174,9 +196,9 @@ class GenerateOfflineTrajectory(object):
     def generate_init_cosine_trajectories(self,xf): # initial trajectory는 8초동안 이동함
         duration = np.ones(6,dtype=int) * 8
         if self.unity:
-            x0 = self.Unity_MGPI.get_current_pose(rpy=True) 
+            x0 = self.unity_pose
         if self.real:
-            x0 = self.Real_MGPI.get_current_pose(rpy=True) 
+            x0 = self.real_pose
             
         amp, bias, freq = self.generate_init_random_cosine_trajectory_parameter(np.asarray(x0),np.asarray(xf),duration)
 
@@ -213,13 +235,22 @@ class GenerateOfflineTrajectory(object):
             return True
         
     def ik_solver(self, target_pose):
-        rospy.wait_for_service('solve_ik')
-        try:
-            solve_ik = rospy.ServiceProxy('solve_ik', SolveIk)
-            res = solve_ik(target_pose)
-            return res
-        except rospy.ServiceException as e:
-            print("Service call failed: %s"%e)    
+        if self.unity:
+            rospy.wait_for_service('/unity/solve_ik')
+            try:
+                solve_ik = rospy.ServiceProxy('/unity/solve_ik', SolveIk)
+                res = solve_ik(target_pose)
+                return res
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)    
+        if self.real:
+            rospy.wait_for_service('/real/solve_ik')
+            try:
+                solve_ik = rospy.ServiceProxy('/real/solve_ik', SolveIk)
+                res = solve_ik(target_pose)
+                return res
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)                
         
     def solve_ik_by_moveit(self, target_pose):
         result = self.ik_solver(target_pose)
@@ -232,7 +263,9 @@ class GenerateOfflineTrajectory(object):
             rospy.set_param(self.prefix+'/teleop_state', "stop")
 
     def check_ik_solution(self, target_pose):
+        print('6')
         result = self.ik_solver(target_pose)
+        print('7')
         if result.success:# IK가 성공하면 결과를 저장
             _ik_result = Float64MultiArray()
             _ik_result.data = [result.ik_result.data[0], result.ik_result.data[1], result.ik_result.data[2], result.ik_result.data[3], result.ik_result.data[4], result.ik_result.data[5]] 
@@ -257,12 +290,14 @@ class GenerateOfflineTrajectory(object):
     def get_dataset(self,dataset, target_pose, target_vel,target_acc):
         # state : pose , velocity
         if self.real:
-            dataset['real_cur_pos'].append(self.Real_MGPI.get_current_pose(rpy=True))
-            dataset['real_cur_vel'].append(self.Real_MGPI.get_current_cartesian_velocity())
+            dataset['real_cur_pos'].append(self.real_pose)
+            dataset['real_cur_vel'].append(self.real_velocity)
+            dataset['real_m_index'].append(self.real_m_index)
 
         if self.unity:
-            dataset['unity_cur_pos'].append(self.Unity_MGPI.get_current_pose(rpy=True) )
-            dataset['unity_cur_vel'].append(self.Unity_MGPI.get_current_cartesian_velocity())
+            dataset['unity_cur_pos'].append(self.unity_pose)
+            dataset['unity_cur_vel'].append(self.unity_velocity)
+            dataset['unity_m_index'].append(self.unity_m_index)
 
         if self.get_desired:
             dataset['desired_cur_pos'].append(target_pose)
@@ -270,7 +305,7 @@ class GenerateOfflineTrajectory(object):
             dataset['desired_cur_acc'].append(target_acc)
 
         if self.get_reward:
-            dataset['reward'].append()
+            dataset['reward'].append('')
 
         return dataset
 
@@ -306,6 +341,7 @@ class GenerateOfflineTrajectory(object):
         return dataset
 
     def start_data_collection(self, episode_num, index):
+
         datasets = []
         self.index = index
         if self.real:
@@ -313,8 +349,12 @@ class GenerateOfflineTrajectory(object):
         if self.unity:
             rospy.set_param('/unity/mode', IDLE)      
         
+        if self.unity:
+            self.initial_pose = self.unity_pose
+        if self.real:
+            self.initial_pose = self.real_pose
+            
         success_episode_count = 0
-        
         while episode_num > success_episode_count:
             dataset = defaultdict(list)
             # generating target trajectory for 5~7 seconds
@@ -395,10 +435,9 @@ def main():
     rospy.init_node("gen_traj", anonymous=True)
     rospy.set_param('/unity/mode', INIT)
     time.sleep(5)
-    Unity_MGPI  = MoveGroupPythonInteface(prefix='/unity')
-    #Real_MGPI = MoveGroupPythonInteface(prefix = '/real')
-
-    gen_traj = GenerateOfflineTrajectory(thread_rate = 25, Unity_MoveGroup = Unity_MGPI, Real_MoveGroup = None, real = False, unity = True)
+    rate = rospy.Rate(1)
+    gen_traj = GenerateOfflineTrajectory(thread_rate = 25, real = False, unity = True)
+    rate.sleep()
     datasets = gen_traj.start_data_collection(episode_num = 20, index = 1)
 
   
