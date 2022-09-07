@@ -325,7 +325,7 @@ tf::StampedTransform Move_Group_Interface::listenTransform(void)
 {
   tf::StampedTransform transform; // http://docs.ros.org/en/indigo/api/tf/html/c++/classtf_1_1Transform.html
   try{
-    listener.lookupTransform("/base_link", "/tool_gripper", ros::Time(0), transform);
+    listener.lookupTransform(prefix+"/base_link", prefix+"/tool_gripper", ros::Time(0), transform);
   }
   catch (tf::TransformException ex){
     ROS_ERROR("%s",ex.what());
