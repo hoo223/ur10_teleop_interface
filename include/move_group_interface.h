@@ -224,6 +224,13 @@ bool Move_Group_Interface::solve_ik(geometry_msgs::Pose end_pose)
     ik_result.data.push_back(joint_values[3]);
     ik_result.data.push_back(joint_values[4]);
     ik_result.data.push_back(joint_values[5]);
+    
+    // Check solution continuity
+    bool continuity = check_solution_continuity();
+    if(!continuity){
+      found_ik = false;
+      ROS_INFO("IK solution is not continuous");
+    }
   }
   else
   {
