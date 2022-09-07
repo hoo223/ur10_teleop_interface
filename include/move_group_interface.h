@@ -210,20 +210,28 @@ bool Move_Group_Interface::solve_ik(geometry_msgs::Pose end_pose)
   tf::poseMsgToEigen(end_pose, pose_in);
   bool found_ik = kinematic_state->setFromIK(joint_model_group, pose_in, 0.1);
   kinematic_state->update(); // https://github.com/ros-planning/moveit/pull/188
-  
+
   // Now, we can print out the IK solution (if found):
   if (found_ik)
   {
-    kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
-    //ROS_INFO("found IK solution");
-    // publish result
-    ik_result.data.clear();
-    ik_result.data.push_back(joint_values[0]);
-    ik_result.data.push_back(joint_values[1]);
-    ik_result.data.push_back(joint_values[2]);
-    ik_result.data.push_back(joint_values[3]);
-    ik_result.data.push_back(joint_values[4]);
-    ik_result.data.push_back(joint_values[5]);
+    // Check solution continuity
+    bool continuity = check_solution_continuity();
+    if(continuity){
+      kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
+      //ROS_INFO("found IK solution");
+      // publish result
+      ik_result.data.clear();
+      ik_result.data.push_back(joint_values[0]);
+      ik_result.data.push_back(joint_values[1]);
+      ik_result.data.push_back(joint_values[2]);
+      ik_result.data.push_back(joint_values[3]);
+      ik_result.data.push_back(joint_values[4]);
+      ik_result.data.push_back(joint_values[5]);
+    }
+    else{
+      found_ik = false;
+      ROS_INFO("IK solution is not continuous");
+    }  
   }
   else
   {

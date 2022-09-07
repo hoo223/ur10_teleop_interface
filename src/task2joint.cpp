@@ -56,7 +56,7 @@ int main(int argc, char** argv)
   // Loop
   // clock_t start, end;
   // double result, manipulability;
-  bool success, continuity;
+  bool success;
   int pre_mode;
   
   ros::Rate loop_rate(250);
@@ -67,10 +67,8 @@ int main(int argc, char** argv)
     {
       // Solve IK 
       success = move_group_interface.solve_ik(move_group_interface.target_pose);
-      // Check solution continuity
-      continuity = move_group_interface.check_solution_continuity();
       
-      if(success && continuity){
+      if(success){
         ik_result_pub.publish(move_group_interface.ik_result);
         move_group_interface.pre_ik_result = move_group_interface.ik_result;
       }
