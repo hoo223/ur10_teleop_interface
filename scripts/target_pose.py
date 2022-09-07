@@ -88,7 +88,7 @@ class targetPose(object):
     # # get IK of target cartesian pose = target joint values
     ps = PoseStamped()
     ps.header.stamp = rospy.Time.now()
-    ps.header.frame_id = 'base_link'
+    ps.header.frame_id = self.prefix+'/base_link'
     ps.pose.position.x = self.target_pose[0]
     ps.pose.position.y = self.target_pose[1]
     ps.pose.position.z = self.target_pose[2]

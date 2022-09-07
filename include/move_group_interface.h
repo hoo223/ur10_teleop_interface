@@ -214,24 +214,23 @@ bool Move_Group_Interface::solve_ik(geometry_msgs::Pose end_pose)
   // Now, we can print out the IK solution (if found):
   if (found_ik)
   {
+    kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
+    //ROS_INFO("found IK solution");
+    // publish result
+    ik_result.data.clear();
+    ik_result.data.push_back(joint_values[0]);
+    ik_result.data.push_back(joint_values[1]);
+    ik_result.data.push_back(joint_values[2]);
+    ik_result.data.push_back(joint_values[3]);
+    ik_result.data.push_back(joint_values[4]);
+    ik_result.data.push_back(joint_values[5]);
+    
     // Check solution continuity
     bool continuity = check_solution_continuity();
-    if(continuity){
-      kinematic_state->copyJointGroupPositions(joint_model_group, joint_values);
-      //ROS_INFO("found IK solution");
-      // publish result
-      ik_result.data.clear();
-      ik_result.data.push_back(joint_values[0]);
-      ik_result.data.push_back(joint_values[1]);
-      ik_result.data.push_back(joint_values[2]);
-      ik_result.data.push_back(joint_values[3]);
-      ik_result.data.push_back(joint_values[4]);
-      ik_result.data.push_back(joint_values[5]);
-    }
-    else{
+    if(!continuity){
       found_ik = false;
       ROS_INFO("IK solution is not continuous");
-    }  
+    }
   }
   else
   {
@@ -326,7 +325,7 @@ tf::StampedTransform Move_Group_Interface::listenTransform(void)
 {
   tf::StampedTransform transform; // http://docs.ros.org/en/indigo/api/tf/html/c++/classtf_1_1Transform.html
   try{
-    listener.lookupTransform("/base_link", "/tool_gripper", ros::Time(0), transform);
+    listener.lookupTransform(prefix+"/base_link", prefix+"/tool_gripper", ros::Time(0), transform);
   }
   catch (tf::TransformException ex){
     ROS_ERROR("%s",ex.what());
