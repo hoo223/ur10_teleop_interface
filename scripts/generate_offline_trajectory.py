@@ -97,7 +97,7 @@ class GenerateOfflineTrajectory(object):
 
     def generate_cosine_trajectories(self):
         
-        orientation_range = 0.6
+        orientation_range = 0.0
         xyz_range = 0.85
         xyz_offset = 0.5
         
@@ -263,9 +263,7 @@ class GenerateOfflineTrajectory(object):
             rospy.set_param(self.prefix+'/teleop_state', "stop")
 
     def check_ik_solution(self, target_pose):
-        print('6')
         result = self.ik_solver(target_pose)
-        print('7')
         if result.success:# IK가 성공하면 결과를 저장
             _ik_result = Float64MultiArray()
             _ik_result.data = [result.ik_result.data[0], result.ik_result.data[1], result.ik_result.data[2], result.ik_result.data[3], result.ik_result.data[4], result.ik_result.data[5]] 
@@ -337,6 +335,10 @@ class GenerateOfflineTrajectory(object):
 
         if self.get_reward:
             dataset['reward'] = dataset['reward'][:-1]
+            if self.real:
+                dataset['real_m_index'] = dataset['real_m_index'][:-1]
+            if self.unity:
+                dataset['unity_m_index'] = dataset['unity_m_index'][:-1]
 
         return dataset
 
@@ -434,12 +436,19 @@ class GenerateOfflineTrajectory(object):
 def main():
     rospy.init_node("gen_traj", anonymous=True)
     rospy.set_param('/unity/mode', INIT)
+    rospy.set_param('/real/mode', INIT)
     time.sleep(5)
     rate = rospy.Rate(1)
-    gen_traj = GenerateOfflineTrajectory(thread_rate = 25, real = False, unity = True)
+    gen_traj = GenerateOfflineTrajectory(thread_rate = 25, real = True, unity = True)
     rate.sleep()
-    datasets = gen_traj.start_data_collection(episode_num = 20, index = 1)
-
-  
+    datasets = gen_traj.start_data_collection(episode_num = 10, index = 1)
+    path = '/root/share/catkin_ws/src/ur10_teleop_interface/scripts/'
+    filename = 'datasets_damp_2500.npy'
+    np.save(path+filename,datasets)
+    
+    rospy.set_param('/unity/mode', INIT)
+    rospy.set_param('/real/mode', INIT)
+    time.sleep(5)
+    
 if __name__ == '__main__':
     main()
