@@ -342,6 +342,61 @@ class GenerateOfflineTrajectory(object):
 
         return dataset
 
+    def generate_online_trajectory_and_go_to_init(self, index):
+        self.index = index
+        
+        if self.real:
+            rospy.set_param('/real/mode', IDLE) # set velocity to zero
+        if self.unity:
+            rospy.set_param('/unity/mode', IDLE)   
+               
+        if self.unity:
+            self.initial_pose = self.unity_pose
+        if self.real:
+            self.initial_pose = self.real_pose
+            
+        success = False
+        
+        while not success:
+            target_traj, traj_vel, traj_acc, target_traj_length = self.generate_cosine_trajectories()
+            ik_target_traj = self.generate_target_pose(target_traj)
+            if ik_target_traj == False:
+                continue
+            print('success generating target trajectory')
+
+            # generating initial trajectory for 8 seconds
+            init_traj, init_traj_length = self.generate_init_cosine_trajectories(target_traj[:,0])
+            ik_init_traj = self.generate_target_pose(init_traj)
+            if ik_init_traj == False:
+                continue
+            print('success generating initial trajectory')  
+            success = True  
+            
+            if self.real:
+                rospy.set_param('/real/mode', JOINT_CONTROL)
+            if self.unity:
+                rospy.set_param('/unity/mode', JOINT_CONTROL)
+
+            for j in range(init_traj_length):
+                target_pose = self.input_conversion(init_traj[:,j])
+                target_pose = self.solve_ik_by_moveit(target_pose)
+
+                if self.real:
+                    self.real_ik_result_pub.publish(target_pose)
+                if self.unity:
+                    self.unity_ik_result_pub.publish(target_pose)
+
+                self.rate.sleep()  
+            print('arrived at the initial pose')
+
+            time.sleep(1)
+            
+            if self.real:
+                rospy.set_param('/real/mode', IDLE) # set velocity to zero
+            if self.unity:
+                rospy.set_param('/unity/mode', IDLE)   
+        return target_traj, traj_vel, traj_acc, target_traj_length
+    
     def start_data_collection(self, episode_num, index):
 
         datasets = []
@@ -376,7 +431,7 @@ class GenerateOfflineTrajectory(object):
             # waiting one second for ready
             print('wait one second before going to the initial pose')
             time.sleep(1)
-            
+
             if self.real:
                 rospy.set_param('/real/mode', JOINT_CONTROL)
             if self.unity:
@@ -439,7 +494,7 @@ def main():
     rospy.set_param('/real/mode', INIT)
     time.sleep(5)
     rate = rospy.Rate(1)
-    gen_traj = GenerateOfflineTrajectory(thread_rate = 25, real = True, unity = True)
+    gen_traj = GenerateOfflineTrajectory(thread_rate = 40, real = True, unity = True)
     rate.sleep()
     datasets = gen_traj.start_data_collection(episode_num = 10, index = 1)
     path = '/root/share/catkin_ws/src/ur10_teleop_interface/scripts/'

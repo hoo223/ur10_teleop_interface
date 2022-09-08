@@ -56,26 +56,7 @@ def main():
 
         plt.legend(fontsize=15)
         plt.show()
-    '''
-    dataset['real_next_pos'] = dataset['real_cur_pos'][1:]
-    dataset['real_next_vel'] = dataset['real_cur_vel'][1:]
-    dataset['unity_next_pos'] = dataset['unity_cur_pos'][1:]
-    dataset['unity_next_vel'] = dataset['unity_cur_vel'][1:]
 
-
-    dataset['real_cur_pos'] = dataset['real_cur_pos'][:-1]
-    dataset['real_cur_vel'] = dataset['real_cur_vel'][:-1]
-    dataset['unity_cur_pos'] = dataset['unity_cur_pos'][:-1]
-    dataset['unity_cur_vel'] = dataset['unity_cur_vel'][:-1]
-                
-    dataset['desired_next_pos'] = dataset['desired_cur_pos'][1:]
-    dataset['desired_next_vel'] = dataset['desired_cur_vel'][1:]
-    dataset['desired_next_acc'] = dataset['desired_cur_acc'][1:]
-
-    dataset['desired_cur_pos'] = dataset['desired_cur_pos'][:-1]
-    dataset['desired_cur_vel'] = dataset['desired_cur_vel'][:-1]
-    dataset['desired_cur_acc'] = dataset['desired_cur_acc'][:-1]
-    '''
     
 if __name__ == '__main__':
     main()
