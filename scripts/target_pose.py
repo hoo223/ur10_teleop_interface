@@ -6,7 +6,7 @@ INIT = 0
 TELEOP = 1
 TASK_CONTROL = 2
 JOINT_CONTROL = 3
-RL = 4
+RSA = 4
 MOVEIT = 5
 IDLE = 6
 
@@ -156,7 +156,7 @@ def main():
     if mode == INIT:
       tp.target_pose = copy.deepcopy(tp.init_pose)
       print("target_pose initialized")
-    elif mode == TELEOP:
+    elif (mode == TELEOP or (mode == RSA)):
       tp.update_target_pose()
       print("target_pose calculated")
       tp.target_pose_pub.publish(tp.ps)

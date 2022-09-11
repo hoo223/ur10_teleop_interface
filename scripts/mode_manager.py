@@ -17,7 +17,7 @@ INIT = 0
 TELEOP = 1
 TASK_CONTROL = 2
 JOINT_CONTROL = 3
-RL = 4
+RSA = 4
 MOVEIT = 5
 IDLE = 6
 
@@ -146,8 +146,9 @@ def main():
       elif mode == MOVEIT:
         mm.change_to_base_controller("")
         print("MOVEIT mode")
-      elif mode == RL:
-        print("RL mode")
+      elif mode == RSA:
+        mm.change_to_velocity_controller("")
+        print("RSA mode")
       pre_mode = mode
 
     rate.sleep()

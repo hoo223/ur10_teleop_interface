@@ -6,7 +6,7 @@ INIT = 0
 TELEOP = 1
 TASK_CONTROL = 2
 JOINT_CONTROL = 3
-RL = 4
+RSA = 4
 MOVEIT = 5
 IDLE = 6
 
@@ -35,6 +35,8 @@ class inputTarget(object):
     self.joystick_command[6] = -0.1
     self.keyboard_command = np.zeros(7)
     self.keyboard_command[6] = -0.1
+    self.rsa_command = np.zeros(7)
+    self.rsa_command[6] = -0.1
     self.input_pos_gain = rospy.get_param(prefix+"input_pos_gain", 0.00004)
     self.input_ori_gain = rospy.get_param(prefix+"input_ori_gain", 0.00008)
     self.speed_level = 5 # 로봇 움직임 속도 - 1~10 단계
@@ -42,6 +44,7 @@ class inputTarget(object):
     # subscriber
     self.joystick_command_sub = rospy.Subscriber('joystick_command', Float64MultiArray, self.joystick_command_callback)
     self.keyboard_command_sub = rospy.Subscriber('keyboard_command', Float64MultiArray, self.keyboard_command_callback)
+    self.keyboard_command_sub = rospy.Subscriber('rsa_command', Float64MultiArray, self.rsa_command_callback)
 
     # publisher
     self.delta_target_input_pub = rospy.Publisher("delta_target_input", Float64MultiArray, queue_size= 10)
@@ -103,7 +106,10 @@ class inputTarget(object):
     
   def keyboard_command_callback(self, data):
       self.keyboard_command = data.data
-    
+
+  def rsa_command_callback(self, data):
+    self.rsa_command = data.data
+  
 def main():
   args = rospy.myargv()
   if len(args) > 1: 
@@ -128,10 +134,7 @@ def main():
   # Loop
   while not rospy.is_shutdown():
     mode = rospy.get_param(prefix+"/mode")
-    if mode == INIT:
-      pass
-      #print("target_pose initialized")
-    elif mode == TELEOP:
+    if mode == TELEOP:
       delta_target_joystick = it.input_conversion(it.joystick_command)
       delta_target_keyboard = it.input_conversion(it.keyboard_command)
       # combine delta target
@@ -142,6 +145,17 @@ def main():
       delta_target_input.data.append(delta_target_joystick[3]+delta_target_keyboard[3])
       delta_target_input.data.append(delta_target_joystick[4]+delta_target_keyboard[4])
       delta_target_input.data.append(delta_target_joystick[5]+delta_target_keyboard[5])
+      it.delta_target_input_pub.publish(delta_target_input)
+    elif mode == RSA:
+      delta_target_rsa = it.input_conversion(it.rsa_command)
+      # combine delta target
+      delta_target_input = Float64MultiArray()
+      delta_target_input.data.append(delta_target_rsa[0])
+      delta_target_input.data.append(delta_target_rsa[1])
+      delta_target_input.data.append(delta_target_rsa[2])
+      delta_target_input.data.append(delta_target_rsa[3])
+      delta_target_input.data.append(delta_target_rsa[4])
+      delta_target_input.data.append(delta_target_rsa[5])
       it.delta_target_input_pub.publish(delta_target_input)
     rate.sleep()
 

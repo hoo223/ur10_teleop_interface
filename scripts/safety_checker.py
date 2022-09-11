@@ -10,10 +10,9 @@ INIT = 0
 TELEOP = 1
 TASK_CONTROL = 2
 JOINT_CONTROL = 3
-RL = 4
+RSA = 4
 MOVEIT = 5
 IDLE = 6
-RESET = 7
 
 ## class definition
 class SafetyChecker(object):

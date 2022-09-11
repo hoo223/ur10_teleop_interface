@@ -15,11 +15,9 @@ const int INIT = 0;
 const int TELEOP = 1;
 const int TASK_CONTROL = 2;
 const int JOINT_CONTROL = 3;
-const int RL = 4;
+const int RSA = 4;
 const int MOVEIT = 5;
 const int IDLE = 6;
-const int INVALID_TARGET = 7;
-
 
 int main(int argc, char** argv)
 {
@@ -63,7 +61,7 @@ int main(int argc, char** argv)
   // start = clock(); // 측정 시작
   while (ros::ok()){
     n.getParam(prefix+"/mode", mode);
-    if((mode == TELEOP) || (mode == TASK_CONTROL))
+    if((mode == TELEOP) || (mode == TASK_CONTROL) || (mode == RSA))
     {
       // Solve IK 
       success = move_group_interface.solve_ik(move_group_interface.target_pose);

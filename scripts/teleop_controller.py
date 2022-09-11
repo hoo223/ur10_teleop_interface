@@ -6,7 +6,7 @@ INIT = 0
 TELEOP = 1
 TASK_CONTROL = 2
 JOINT_CONTROL = 3
-RL = 4
+RSA = 4
 MOVEIT = 5
 IDLE = 6
 
@@ -103,7 +103,7 @@ def main():
   rate = rospy.Rate(250)
   while not rospy.is_shutdown():
     mode = rospy.get_param(prefix+"/mode")
-    if (mode == TELEOP) or (mode == TASK_CONTROL) or (mode == JOINT_CONTROL):
+    if (mode == TELEOP) or (mode == TASK_CONTROL) or (mode == JOINT_CONTROL) or (mode == RSA):
       tc.control_loop()
     else:
       tc.stop()
