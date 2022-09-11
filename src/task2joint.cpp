@@ -1,7 +1,6 @@
 // ROS
 #include <ros/ros.h>
-// ROS Messages
-#include <geometry_msgs/Pose.h>
+// ROS Service
 #include <ur10_teleop_interface/SetTargetPose.h>
 // Etc
 #include <time.h> 
@@ -47,9 +46,9 @@ int main(int argc, char** argv)
   ros::ServiceServer ik_service = n.advertiseService("solve_ik", &Move_Group_Interface::solve_ik_srv, &move_group_interface);
   ros::ServiceClient set_target_pose_client = n.serviceClient<ur10_teleop_interface::SetTargetPose>("set_target_pose");
 
-  // ik result publisher
-  ros::Publisher ik_result_pub;
-  ik_result_pub = n.advertise<std_msgs::Float64MultiArray>(prefix+"/ik_result", 10);
+  // publisher
+  ros::Publisher ik_result_pub = n.advertise<std_msgs::Float64MultiArray>(prefix+"/ik_result", 10);
+  ros::Publisher ik_failed_pub = n.advertise<std_msgs::Bool>(prefix+"/ik_failed", 10);
 
   // Loop
   // clock_t start, end;
@@ -70,6 +69,9 @@ int main(int argc, char** argv)
       
       if(success && continuity){
         ik_result_pub.publish(move_group_interface.ik_result);
+        std_msgs::Bool ik_failed_msg;
+        ik_failed_msg.data = false;
+        ik_failed_pub.publish(ik_failed_msg);
         move_group_interface.pre_ik_result = move_group_interface.ik_result;
       }
       else{
@@ -79,6 +81,9 @@ int main(int argc, char** argv)
         req.target_pose = move_group_interface.getCurrentPoseRPY();
         set_target_pose_client.call(req, res);
         ik_result_pub.publish(move_group_interface.pre_ik_result);
+        std_msgs::Bool ik_failed_msg;
+        ik_failed_msg.data = true;
+        ik_failed_pub.publish(ik_failed_msg);
       }
     }
     else if(mode == INIT)
