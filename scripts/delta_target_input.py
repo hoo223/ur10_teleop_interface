@@ -56,9 +56,10 @@ class inputTarget(object):
     x_input = command[1]
     y_input = command[0]
     z_input = command[2]
-    yaw_input = -command[5]
-    roll_input = pitch_input = 0
-    
+    roll_input = command[3]
+    pitch_input = command[4]
+    yaw_input = command[5]
+      
     button = int(command[6])
     if button == 1:
       roll_input = 1
