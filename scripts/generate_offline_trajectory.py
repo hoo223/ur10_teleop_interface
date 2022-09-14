@@ -335,10 +335,10 @@ class GenerateOfflineTrajectory(object):
 
         if self.get_reward:
             dataset['reward'] = dataset['reward'][:-1]
-            if self.real:
-                dataset['real_m_index'] = dataset['real_m_index'][:-1]
-            if self.unity:
-                dataset['unity_m_index'] = dataset['unity_m_index'][:-1]
+        if self.real:
+            dataset['real_m_index'] = dataset['real_m_index'][:-1]
+        if self.unity:
+            dataset['unity_m_index'] = dataset['unity_m_index'][:-1]
 
         return dataset
 
@@ -474,7 +474,7 @@ class GenerateOfflineTrajectory(object):
             print(target_traj_length/self.thread_rate)
             dataset = self.arrange_dataset(dataset)
             datasets.append(dataset)
-
+            time.sleep(1)
             if self.real:
                 rospy.set_param('/real/mode', IDLE) # set velocity to zero
             if self.unity:
@@ -482,7 +482,7 @@ class GenerateOfflineTrajectory(object):
 
             print('change velocity control mode (joint space) to idle mode, set velocity zero')
             success_episode_count += 1
-            time.sleep(1)
+            
             print('wait one second before generating new trajectory')
 
         return datasets
@@ -496,7 +496,7 @@ def main():
     rate = rospy.Rate(1)
     gen_traj = GenerateOfflineTrajectory(thread_rate = 40, real = True, unity = True)
     rate.sleep()
-    datasets = gen_traj.start_data_collection(episode_num = 10, index = 1)
+    datasets = gen_traj.start_data_collection(episode_num = 50, index = 1)
     path = '/root/share/catkin_ws/src/ur10_teleop_interface/scripts/'
     filename = 'datasets_damp_2500.npy'
     np.save(path+filename,datasets)
