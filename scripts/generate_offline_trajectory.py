@@ -98,11 +98,11 @@ class GenerateOfflineTrajectory(object):
     def generate_cosine_trajectories(self):
         
         orientation_range = 0.0
-        xyz_range = 0.85
+        xyz_range = 0.80
         xyz_offset = 0.5
         
-        inner_range = 0.4
-        inner_offset = 0.5
+        inner_range = 0.55
+        inner_offset = 0.30
             
         r_offset = self.initial_pose[3]
         p_offset = self.initial_pose[4]
@@ -114,8 +114,8 @@ class GenerateOfflineTrajectory(object):
             x0[0] = np.random.random(1) *inner_range + inner_offset
             xf[0] = np.random.random(1) *inner_range + inner_offset
 
-            x0[2] = np.random.random(1) *xyz_range + inner_offset
-            xf[2] = np.random.random(1) *xyz_range + inner_offset
+            x0[2] = np.random.random(1) *inner_range + inner_offset # index 2는 높이 방향 0.3~1.15
+            xf[2] = np.random.random(1) *inner_range + inner_offset
             
             x0[3] = np.random.random(1) *2*orientation_range - orientation_range +r_offset
             x0[4] = np.random.random(1) *2*orientation_range - orientation_range +p_offset
@@ -125,13 +125,13 @@ class GenerateOfflineTrajectory(object):
             xf[5] = np.random.random(1) *2*orientation_range - orientation_range +y_offset
             
         elif self.index ==1: # x = -1~1, y = 0~1, z = -1~1
-            x0 = np.random.random(6) * 2*xyz_range - xyz_range
+            x0 = np.random.random(6) * 2*xyz_range - xyz_range # -0.80~0.80
             xf = np.random.random(6) * 2*xyz_range - xyz_range
-            x0[1] = np.random.random(1) *inner_range + inner_offset
+            x0[1] = np.random.random(1) *inner_range + inner_offset # 0.30~0.85
             xf[1] = np.random.random(1) *inner_range + inner_offset
             
-            x0[2] = np.random.random(1) *xyz_range + inner_offset
-            xf[2] = np.random.random(1) *xyz_range + inner_offset
+            x0[2] = np.random.random(1) *inner_range + inner_offset # 0.30~0.85
+            xf[2] = np.random.random(1) *inner_range + inner_offset
             
             x0[3] = np.random.random(1) *2*orientation_range - orientation_range +r_offset
             x0[4] = np.random.random(1) *2*orientation_range - orientation_range +p_offset
@@ -147,8 +147,8 @@ class GenerateOfflineTrajectory(object):
             xf[0] = -np.random.random(1) *inner_range - inner_offset
             
             
-            x0[2] = np.random.random(1) *xyz_range + inner_offset
-            xf[2] = np.random.random(1) *xyz_range + inner_offset
+            x0[2] = np.random.random(1) *inner_range + inner_offset
+            xf[2] = np.random.random(1) *inner_range + inner_offset
                     
             x0[3] = np.random.random(1) *2*orientation_range - orientation_range +r_offset
             x0[4] = np.random.random(1) *2*orientation_range - orientation_range +p_offset
@@ -163,8 +163,8 @@ class GenerateOfflineTrajectory(object):
             x0[1] = -np.random.random(1) *inner_range - inner_offset
             xf[1] = -np.random.random(1) *inner_range - inner_offset
             
-            x0[2] = np.random.random(1) *xyz_range + inner_offset
-            xf[2] = np.random.random(1) *xyz_range + inner_offset
+            x0[2] = np.random.random(1) *inner_range + inner_offset
+            xf[2] = np.random.random(1) *inner_range + inner_offset
             
             x0[3] = np.random.random(1) *2*orientation_range - orientation_range +r_offset
             x0[4] = np.random.random(1) *2*orientation_range - orientation_range +p_offset
