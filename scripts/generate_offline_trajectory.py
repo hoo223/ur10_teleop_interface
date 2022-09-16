@@ -97,7 +97,7 @@ class GenerateOfflineTrajectory(object):
 
     def generate_cosine_trajectories(self):
         
-        orientation_range = 0.0
+        orientation_range = 0.2
         xyz_range = 0.80
         xyz_offset = 0.5
         
@@ -107,7 +107,7 @@ class GenerateOfflineTrajectory(object):
         r_offset = self.initial_pose[3]
         p_offset = self.initial_pose[4]
         y_offset = self.initial_pose[5]
-    
+
         if self.index==0: # x = 0~1 , y = -1~1, z=-1~1
             x0 = np.random.random(6) * 2*xyz_range - xyz_range
             xf = np.random.random(6) * 2*xyz_range - xyz_range
@@ -172,7 +172,7 @@ class GenerateOfflineTrajectory(object):
             xf[3] = np.random.random(1) *2*orientation_range - orientation_range +r_offset
             xf[4] = np.random.random(1) *2*orientation_range - orientation_range +p_offset
             xf[5] = np.random.random(1) *2*orientation_range - orientation_range +y_offset
-        
+
         duration = np.ones(6,dtype=int) * int(np.random.random(1)*3+5) # target trajectory는 5~7초 동안 이동함, total step = duration * thread_rate
         amp, bias, freq = self.generate_random_cosine_trajectory_parameter(x0,xf,duration)
         
@@ -182,9 +182,8 @@ class GenerateOfflineTrajectory(object):
         t,rxt,rxvt,rxat = self.generate_cosine_trajectory(amp[3], bias[3], freq[3], duration[3])
         t,ryt,ryvt,ryat = self.generate_cosine_trajectory(amp[4], bias[4], freq[4], duration[4])
         t,rzt,rzvt,rzat = self.generate_cosine_trajectory(amp[5], bias[5], freq[5], duration[5])
-
+        
         return np.vstack((xt,yt,zt,rxt,ryt,rzt)), np.vstack((xvt,yvt,zvt,rxvt,ryvt,rzvt)), np.vstack((xat,yat,zat,rxat,ryat,rzat)), len(t)
-
 
 
     def generate_init_random_cosine_trajectory_parameter(self,x0,xf,T):
@@ -193,15 +192,39 @@ class GenerateOfflineTrajectory(object):
         freq = np.pi/T
         return amp, bias, freq
 
-    def generate_init_cosine_trajectories(self,xf): # initial trajectory는 8초동안 이동함
+    def generate_init_cosine_trajectories(self, xf): # initial trajectory는 8초동안 이동함
         duration = np.ones(6,dtype=int) * 8
         if self.unity:
             x0 = self.unity_pose
         if self.real:
             x0 = self.real_pose
             
-        amp, bias, freq = self.generate_init_random_cosine_trajectory_parameter(np.asarray(x0),np.asarray(xf),duration)
+        x0 = np.asarray(x0)
+        
+        if x0[3] > self.initial_pose[3] + 0.3:
+            x0[3] = x0[3] - np.pi
+            
+        if x0[4] >self.initial_pose[4] + 0.3: # 0.3은 orientation range 보다 조금 더 큰 값 
+            x0[4] = x0[4] - np.pi
+        
+        if x0[5] > self.initial_pose[5] +0.3:
+            x0[5] = x0[5] - np.pi
+            
+        if x0[3] < self.initial_pose[3] - 0.3:
+            x0[3] = x0[3] + np.pi  
+              
+        if x0[4] < self.initial_pose[4] - 0.3: # 0.3은 orientation range 보다 조금 더 큰 값 
+            x0[4] = x0[4] + np.pi
+        
+        if x0[5] < self.initial_pose[5] - 0.3:
+            x0[5] = x0[5] + np.pi
+        
 
+        
+        
+        amp, bias, freq = self.generate_init_random_cosine_trajectory_parameter(np.asarray(x0),np.asarray(xf),duration)
+        print(x0)
+        print(xf)
         t,xt,xvt,xat = self.generate_cosine_trajectory(amp[0], bias[0], freq[0], duration[0])
         t,yt,yvt,yat = self.generate_cosine_trajectory(amp[1], bias[1], freq[1], duration[1])
         t,zt,zvt,zat = self.generate_cosine_trajectory(amp[2], bias[2], freq[2], duration[2])
@@ -413,6 +436,7 @@ class GenerateOfflineTrajectory(object):
             
         success_episode_count = 0
         while episode_num > success_episode_count:
+            print('episode number: '+str(success_episode_count))
             dataset = defaultdict(list)
             # generating target trajectory for 5~7 seconds
             target_traj, traj_vel, traj_acc, target_traj_length = self.generate_cosine_trajectories()
@@ -498,8 +522,9 @@ def main():
     rate.sleep()
     datasets = gen_traj.start_data_collection(episode_num = 50, index = 1)
     path = '/root/share/catkin_ws/src/ur10_teleop_interface/scripts/'
-    filename = 'datasets_damp_2500.npy'
+    filename = 'ntraj50_params_ori02_xyz_08_05_in_055_03.npy'
     np.save(path+filename,datasets)
+    
     
     rospy.set_param('/unity/mode', INIT)
     rospy.set_param('/real/mode', INIT)
