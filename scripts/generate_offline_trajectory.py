@@ -62,9 +62,32 @@ class GenerateOfflineTrajectory(object):
       self.real_m_index_sub = rospy.Subscriber('/real/m_index', Float64, self.real_m_index_callback)
     
 
+    def arrange_orientation_data(self, pose):
+        
+        pose = np.asarray(pose)
+        
+        if pose[3] > self.initial_pose[3] + self.orientation_range:
+            pose[3] = pose[3] - np.pi
+            
+        if pose[4] >self.initial_pose[4] + self.orientation_range: # 0.3은 orientation range 보다 조금 더 큰 값 
+            pose[4] = pose[4] - np.pi
+        
+        if pose[5] > self.initial_pose[5] +self.orientation_range:
+            pose[5] = pose[5] - np.pi
+            
+        if pose[3] < self.initial_pose[3] - self.orientation_range:
+            pose[3] = pose[3] + np.pi  
+              
+        if pose[4] < self.initial_pose[4] - self.orientation_range: # 0.3은 orientation range 보다 조금 더 큰 값 
+            pose[4] = pose[4] + np.pi
+        
+        if pose[5] < self.initial_pose[5] - self.orientation_range:
+            pose[5] = pose[5] + np.pi
+        
+        return (pose[0],pose[1],pose[2],pose[3],pose[4],pose[5]) 
         
     def unity_pose_callback(self, data):
-        self.unity_pose = data.data    
+        self.unity_pose = data.data
         
     def unity_velocity_callback(self, data):
         self.unity_velocity = data.data
@@ -72,8 +95,8 @@ class GenerateOfflineTrajectory(object):
     def unity_m_index_callback(self, data):
         self.unity_m_index = data.data    
          
-    def real_pose_callback(self, data):
-        self.real_pose = data.data      
+    def real_pose_callback(self, data):        
+        self.real_pose = data.data
               
     def real_velocity_callback(self, data):
         self.real_velocity = data.data
@@ -97,6 +120,7 @@ class GenerateOfflineTrajectory(object):
 
     def generate_cosine_trajectories(self):
         
+        self.orientation_range = 0.2
         orientation_range = 0.2
         xyz_range = 0.80
         xyz_offset = 0.5
@@ -198,29 +222,9 @@ class GenerateOfflineTrajectory(object):
             x0 = self.unity_pose
         if self.real:
             x0 = self.real_pose
-            
-        x0 = np.asarray(x0)
         
-        if x0[3] > self.initial_pose[3] + 0.3:
-            x0[3] = x0[3] - np.pi
-            
-        if x0[4] >self.initial_pose[4] + 0.3: # 0.3은 orientation range 보다 조금 더 큰 값 
-            x0[4] = x0[4] - np.pi
         
-        if x0[5] > self.initial_pose[5] +0.3:
-            x0[5] = x0[5] - np.pi
-            
-        if x0[3] < self.initial_pose[3] - 0.3:
-            x0[3] = x0[3] + np.pi  
-              
-        if x0[4] < self.initial_pose[4] - 0.3: # 0.3은 orientation range 보다 조금 더 큰 값 
-            x0[4] = x0[4] + np.pi
-        
-        if x0[5] < self.initial_pose[5] - 0.3:
-            x0[5] = x0[5] + np.pi
-        
-
-        
+        x0 = self.arrange_orientation_data(x0)
         
         amp, bias, freq = self.generate_init_random_cosine_trajectory_parameter(np.asarray(x0),np.asarray(xf),duration)
         print(x0)
@@ -311,11 +315,13 @@ class GenerateOfflineTrajectory(object):
     def get_dataset(self,dataset, target_pose, target_vel,target_acc):
         # state : pose , velocity
         if self.real:
+            self.real_pose = self.arrange_orientation_data(self.real_pose)
             dataset['real_cur_pos'].append(self.real_pose)
             dataset['real_cur_vel'].append(self.real_velocity)
             dataset['real_m_index'].append(self.real_m_index)
 
         if self.unity:
+            self.unity_pose = self.arrange_orientation_data(self.unity_pose)
             dataset['unity_cur_pos'].append(self.unity_pose)
             dataset['unity_cur_vel'].append(self.unity_velocity)
             dataset['unity_m_index'].append(self.unity_m_index)
@@ -520,7 +526,7 @@ def main():
     rate = rospy.Rate(1)
     gen_traj = GenerateOfflineTrajectory(thread_rate = 40, real = True, unity = True)
     rate.sleep()
-    datasets = gen_traj.start_data_collection(episode_num = 50, index = 1)
+    datasets = gen_traj.start_data_collection(episode_num = 5, index = 1)
     path = '/root/share/catkin_ws/src/ur10_teleop_interface/scripts/'
     filename = 'ntraj50_params_ori02_xyz_08_05_in_055_03.npy'
     np.save(path+filename,datasets)
