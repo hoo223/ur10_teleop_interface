@@ -1,5 +1,9 @@
  <launch>
     <arg name="prefix" default="unity"/>
+    <arg name="joystick" default="true"/>
+    <arg name="keyboard" default="true"/>
+    <arg name="rviz" default="true"/>
+
     <group ns="$(arg prefix)">
         <!-- Remap haptic topic -->
         <remap from="/unity/device1/pose" to="/haptic/device1/pose"/>
@@ -12,6 +16,9 @@
         <!-- Run mode_manager -->
         <include file="$(find ur10_teleop_interface)/launch/teleop_interface.launch">
             <arg name="prefix" value="$(arg prefix)"/>
+            <arg name="joystick" value="$(arg joystick)"/>
+            <arg name="keyboard" value="$(arg keyboard)"/>
+            <arg name="rviz" value="$(arg rviz)"/>
         </include>
     </group>
  </launch>    

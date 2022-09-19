@@ -1,18 +1,21 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="prefix" default=""/>
+    <arg name="joystick" default="true"/>
+    <arg name="keyboard" default="true"/>
+    <arg name="rviz" default="true"/>
 
     <!-- joystick node -->
-    <node name="joystick" pkg="ur10_teleop_interface" type="joystick.py" output="log"/>
+    <node name="joystick" pkg="ur10_teleop_interface" type="joystick.py" output="log" if="$(arg joystick)"/>
 
     <!-- keyboard node -->
-    <node name="keyboard" pkg="ur10_teleop_interface" type="keyboard.py" output="log"/>
+    <node name="keyboard" pkg="ur10_teleop_interface" type="keyboard.py" output="log" if="$(arg keyboard)"/>
 
     <!-- mode manager node -->
     <node name="mode_manager" pkg="ur10_teleop_interface" type="mode_manager.py" args="$(arg prefix)" output="log"/>
 
     <!-- delta_target_input node -->
-    <node name="delta_target_input" pkg="ur10_teleop_interface" type="delta_target_input.py" args="$(arg prefix)" output="log"/>
+    <node name="delta_target_input" pkg="ur10_teleop_interface" type="delta_target_input.py" args="$(arg prefix)" output="screen"/>
 
     <!-- delta_target_haptic node -->
     <node name="haptic_target_pose" pkg="ur10_teleop_interface" type="haptic_target_pose.py" args="$(arg prefix)" output="log"/>
@@ -27,7 +30,7 @@
     <node name="teleop_controller" pkg="ur10_teleop_interface" type="teleop_controller.py" args="$(arg prefix)" output="log"/> 
 
     <!-- teleop visualization -->
-    <node name='teleop_visualization' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/$(arg prefix)_visualization.rviz'/>>
+    <node name='teleop_visualization' pkg='rviz' type='rviz' args='-d $(find ur10_teleop_interface)/rviz/$(arg prefix)_visualization.rviz' if="$(arg rviz)"/>>
 
     <!-- arm state publisher node -->
     <node name="arm_state_publisher" pkg="ur10_teleop_interface" type="arm_state_publisher" args="$(arg prefix)" output="log"/>
