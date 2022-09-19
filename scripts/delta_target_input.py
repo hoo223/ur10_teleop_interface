@@ -31,10 +31,10 @@ class inputTarget(object):
 
     # teleoperation variable
     self.pre_button = None
-    self.joystick_command = np.zeros(7)
-    self.joystick_command[6] = -0.1
-    self.keyboard_command = np.zeros(7)
-    self.keyboard_command[6] = -0.1
+    self.joystick_command = list(np.zeros(7))
+    self.joystick_command[6] = -1.0
+    self.keyboard_command = list(np.zeros(7))
+    self.keyboard_command[6] = -1.0
     self.rsa_command = np.zeros(7)
     self.rsa_command[6] = -0.1
     self.input_pos_gain = rospy.get_param(prefix+"input_pos_gain", 0.00004)
