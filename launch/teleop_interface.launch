@@ -6,10 +6,10 @@
     <arg name="rviz" default="true"/>
 
     <!-- joystick node -->
-    <node name="joystick" pkg="ur10_teleop_interface" type="joystick.py" output="log" if="$(arg joystick)"/>
+    <node name="joystick" pkg="ur10_teleop_interface" type="input.py" args="joystick" output="log" if="$(arg joystick)"/>
 
     <!-- keyboard node -->
-    <node name="keyboard" pkg="ur10_teleop_interface" type="keyboard.py" output="log" if="$(arg keyboard)"/>
+    <node name="keyboard" pkg="ur10_teleop_interface" type="input.py" args="keyboard" output="log" if="$(arg keyboard)"/>
 
     <!-- mode manager node -->
     <node name="mode_manager" pkg="ur10_teleop_interface" type="mode_manager.py" args="$(arg prefix)" output="log"/>

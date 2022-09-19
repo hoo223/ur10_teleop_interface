@@ -59,17 +59,8 @@ class inputTarget(object):
     roll_input = command[3]
     pitch_input = command[4]
     yaw_input = command[5]
-      
     button = int(command[6])
-    if button == 1:
-      roll_input = 1
-    elif button == 2:
-      roll_input = -1
-    if button == 0:
-      pitch_input = 1
-    elif button == 3:
-      pitch_input = -1
-                 
+      
     # change speed
     if button != self.pre_button: # restrict the continuous change
       if button == 5:
