@@ -159,8 +159,8 @@ if __name__ == '__main__':
         input_type = 'joystick'
     fps = 1000
     actor = InputActor(fps=fps, input_type=input_type)
-    pub = rospy.Publisher('joystick_command', Float64MultiArray, queue_size=10)
-    rospy.init_node('joystick', anonymous=True)
+    pub = rospy.Publisher(input_type+'_command', Float64MultiArray, queue_size=10)
+    rospy.init_node(input_type, anonymous=True)
     rate = rospy.Rate(fps)
     while not rospy.is_shutdown():
         # get input from joystick
