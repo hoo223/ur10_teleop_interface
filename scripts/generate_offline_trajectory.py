@@ -524,11 +524,11 @@ def main():
     rospy.set_param('/real/mode', INIT)
     time.sleep(5)
     rate = rospy.Rate(1)
-    gen_traj = GenerateOfflineTrajectory(thread_rate = 40, real = True, unity = True)
+    gen_traj = GenerateOfflineTrajectory(thread_rate = 40, real = True, unity = False)
     rate.sleep()
-    datasets = gen_traj.start_data_collection(episode_num = 5, index = 1)
+    datasets = gen_traj.start_data_collection(episode_num = 50, index = 1)
     path = '/root/share/catkin_ws/src/ur10_teleop_interface/scripts/'
-    filename = 'ntraj50_params_ori02_xyz_08_05_in_055_03.npy'
+    filename = 'ntraj50_params_ori02_xyz_08_05_in_055_03_trial2.npy'
     np.save(path+filename,datasets)
     
     

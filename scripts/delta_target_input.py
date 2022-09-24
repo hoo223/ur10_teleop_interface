@@ -31,10 +31,10 @@ class inputTarget(object):
 
     # teleoperation variable
     self.pre_button = None
-    self.joystick_command = np.zeros(7)
-    self.joystick_command[6] = -0.1
-    self.keyboard_command = np.zeros(7)
-    self.keyboard_command[6] = -0.1
+    self.joystick_command = list(np.zeros(7))
+    self.joystick_command[6] = -1.0
+    self.keyboard_command = list(np.zeros(7))
+    self.keyboard_command[6] = -1.0
     self.input_pos_gain = rospy.get_param(prefix+"input_pos_gain", 0.00004)
     self.input_ori_gain = rospy.get_param(prefix+"input_ori_gain", 0.00008)
     self.speed_level = 5 # 로봇 움직임 속도 - 1~10 단계
