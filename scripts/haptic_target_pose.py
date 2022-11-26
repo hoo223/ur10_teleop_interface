@@ -20,7 +20,7 @@ import ros
 from rospy.service import ServiceException
 import tf
 from tf.transformations import euler_from_quaternion, quaternion_from_euler, quaternion_multiply
-from std_msgs.msg import Float64MultiArray, String, Header
+from std_msgs.msg import Float64MultiArray, String, Header, Bool
 from std_srvs.srv import Trigger, TriggerResponse, TriggerRequest
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import PoseStamped, Quaternion, Pose
@@ -66,6 +66,7 @@ class hapticTargetPose(object):
 
     # publisher
     self.haptic_target_pose_pub = rospy.Publisher(prefix+"/haptic_target_pose", Float64MultiArray, queue_size= 10)
+    self.grasping_state_pub = rospy.Publisher(prefix+"/grasping_state", Bool, queue_size= 10)
     # self.haptic_error_pub = rospy.Publisher(prefix+"haptic_error", Float64MultiArray, queue_size=10)
     # self.haptic_rpy_pub = rospy.Publisher(prefix+"haptic_rpy", Float64MultiArray, queue_size=10)
 
@@ -105,16 +106,23 @@ class hapticTargetPose(object):
     elif (self.white_button_pressed == True) and (data.white_button == 0): # white 버튼을 안누르고 있으면 haptic move state 해제
       #print("white button released")
       self.white_button_pressed = False
+      
     # grey 버튼
     if (self.grey_button_pressed == False) and (data.grey_button == 1):
       #print("grey button pressed")
-      self.start_haptic_pose = self.haptic_pose
-      self.start_target_ori = [self.target_pose.orientation.x, self.target_pose.orientation.y, self.target_pose.orientation.z, self.target_pose.orientation.w]
+      #self.start_haptic_pose = self.haptic_pose
+      #self.start_target_ori = [self.target_pose.orientation.x, self.target_pose.orientation.y, self.target_pose.orientation.z, self.target_pose.orientation.w]
       #print(self.start_target_ori)
       self.grey_button_pressed = True
+      # Grasping state = True
+      self.gripper_closed = not self.gripper_closed
+      grasping_state = Bool()
+      grasping_state.data = self.gripper_closed
+      self.grasping_state_pub.publish(grasping_state)
     elif (self.grey_button_pressed == True) and (data.grey_button == 0): 
       #print("grey button released")
       self.grey_button_pressed = False
+      
     # white + grey 버튼
     if (self.both_button_pressed == False) and ((data.white_button == 1) and (data.grey_button == 1)):
       #print("both button pressed")
@@ -124,6 +132,7 @@ class hapticTargetPose(object):
     elif (self.both_button_pressed == True) and ((data.white_button == 0) and (data.grey_button == 0)): 
       #print("both button released")
       self.both_button_pressed = False
+      
     #print(data, self.white_button_pressed, self.grey_button_pressed, self.both_button_pressed)
   
   def init_mode(self):
