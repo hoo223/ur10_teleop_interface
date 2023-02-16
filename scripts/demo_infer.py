@@ -31,6 +31,11 @@ MOVEIT = 5
 IDLE = 6
 RESET = 7
 
+# TF parameters
+X_OFFSET = -0.449 # -0.446m
+Y_OFFSET = -0.384 # -0.38m
+Z_OFFSET = -0.01 # m
+
 class TrajGenerator(object):
     def __init__(self, n_steps=200, total_steps=250, prefix=""):
         self.prefix = prefix
@@ -68,8 +73,8 @@ class TrajGenerator(object):
         self.infer_precomputation()
 
     def cam2sim_converter(self, cam_pt):
-        x_sim = (cam_pt[1] + 0.681) / 0.0681
-        y_sim = -cam_pt[0]/0.0568
+        x_sim = -(cam_pt[1] - 0.681) / 0.0681
+        y_sim = cam_pt[0]/0.0568
         return [x_sim, y_sim]
 
     # Kernel function
@@ -135,8 +140,8 @@ def main():
     tg = TrajGenerator(n_steps=n_steps)
 
     # transform broadcaster/listener to anchor & receive marker position
-    # br = tf.TransformBroadcaster()
-    # listener = tf.TransformListener()
+    br = tf.TransformBroadcaster()
+    listener = tf.TransformListener()
     
     rate = rospy.Rate(20)
     rate.sleep()
@@ -147,27 +152,35 @@ def main():
     while not rospy.is_shutdown():
 
         # table-to-robot base transform
-        # br.sendTransform((0, 0, 0),
-        #              tf.transformations.quaternion_from_euler(0, 0, np.pi/2),
-        #              rospy.Time.now(),
-        #              'viapt_marker',
-        #              "marker_hole_frame")
+        br.sendTransform((X_OFFSET, Y_OFFSET, Z_OFFSET),
+                     tf.transformations.quaternion_from_euler(0, 0, -np.pi/2), # np.pi/2, 0, np.pi/2
+                     rospy.Time.now(),
+                     'real/base_link',
+                     "marker_hole_frame")
+        
+        # table-to-robot base transform
+        br.sendTransform((0, 0, 0),
+                     tf.transformations.quaternion_from_euler(0, 0, np.pi/2),
+                     rospy.Time.now(),
+                     'viapt_marker',
+                     "marker_hole_frame")
+        
+        # listen to viapt marker position - zeroed on marker_object_frame
+        try:
+            (trans, rot) = listener.lookupTransform('viapt_marker', 'marker_object_frame', rospy.Time(0))
+            tg.sim_viapt = tg.cam2sim_converter(trans[0:2])
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            continue
 
-        if rospy.get_param('/real/mode') == TASK_CONTROL:
+        if rospy.get_param('/real/mode') == JOINT_CONTROL:
             initialised = False
             if i < tg.max_length:
-                # listen to viapt marker position - zeroed on marker_object_frame
-                # try:
-                #     (trans, rot) = listener.lookupTransform('viapt_marker', 'marker_object_frame', rospy.Time(0))
-                #     tg.sim_viapt = tg.cam2sim_converter(trans)
-                # except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                #     continue
-
                 viapt = tg.sim_viapt
                 mean_traj = tg.infer_trajectory(viapt)
 
                 tg.traj_target.data = [mean_traj[0,i], mean_traj[1,i]]
                 tg.traj_target_pub.publish(tg.traj_target)
+                print(tg.traj_target)
 
                 i += 1
             else:

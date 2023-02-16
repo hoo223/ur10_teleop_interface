@@ -47,7 +47,7 @@ class Traj2Target(object):
     def sim_target_callback(self, data):
         self.sim_target = data.data
 
-    def sim2bot_convercalculatedsion(self, sim_target):
+    def sim2bot_conversion(self, sim_target):
         ps = Pose()
         ps.position.x = -0.0568*sim_target[1] -0.384
         ps.position.y = 0.0681*sim_target[0] -0.232
@@ -102,17 +102,21 @@ def main():
     time.sleep(2)
     t2t = Traj2Target()
     rate = rospy.Rate(250)
+    
+    
 
     initialised = False
 
     while not rospy.is_shutdown():
         # print(rospy.get_param('/real/mode'))
-        if rospy.get_param('/real/mode') == TASK_CONTROL:
+        if rospy.get_param('/real/mode') == JOINT_CONTROL:
             initialised = False
 
             target_pose = t2t.sim2bot_conversion(t2t.sim_target)
+            # print(target_pose.position)
             target_pose = t2t.solve_ik_by_moveit(target_pose)
-            print("target pose calculated")
+            # print("target pose calculated")
+            # print(target_pose.position)
 
             t2t.real_ik_result_pub.publish(target_pose)
 
