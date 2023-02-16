@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="prefix" default=""/>
+
+    <!-- trajectory inference node -->
+    <node name="traj_infer" pkg="ur10_teleop_interface" type="demo_infer.py" output="screen"/>
+
+    <!-- target follower node -->
+    <node name="traj2target" pkg="ur10_teleop_interface" type="demo_follow.py" output="screen"/>
+
+</launch>
