@@ -2,8 +2,10 @@
 #include <ros/ros.h>
 // ROS Messages
 #include <geometry_msgs/Pose.h>
+#include <ur10_teleop_interface/SetTargetPose.h>
 // Etc
 #include <time.h> 
+#include <stdlib.h>
 #include <eigen_conversions/eigen_msg.h>
 // Custom
 #include <move_group_interface.h> // Move_Group_Interface class
@@ -16,6 +18,7 @@ const int JOINT_CONTROL = 3;
 const int RL = 4;
 const int MOVEIT = 5;
 const int IDLE = 6;
+const int INVALID_TARGET = 7;
 
 
 int main(int argc, char** argv)
@@ -44,6 +47,7 @@ int main(int argc, char** argv)
 
   // IK service
   ros::ServiceServer ik_service = n.advertiseService("solve_ik", &Move_Group_Interface::solve_ik_srv, &move_group_interface);
+  ros::ServiceClient set_target_pose_client = n.serviceClient<ur10_teleop_interface::SetTargetPose>("set_target_pose");
 
   // ik result publisher
   ros::Publisher ik_result_pub;
@@ -52,17 +56,37 @@ int main(int argc, char** argv)
   // Loop
   // clock_t start, end;
   // double result, manipulability;
-  bool success = false;
+  bool success, continuity;
+  int pre_mode;
   
   ros::Rate loop_rate(250);
   // start = clock(); // 측정 시작
   while (ros::ok()){
     n.getParam(prefix+"/mode", mode);
-    if((mode == TELEOP) || (mode == TASK_CONTROL)){
-      // ROS_INFO("mode %d", mode);
+    if((mode == TELEOP) || (mode == TASK_CONTROL))
+    {
+      // Solve IK 
       success = move_group_interface.solve_ik(move_group_interface.target_pose);
-      if(success)
+      // Check solution continuity
+      continuity = move_group_interface.check_solution_continuity();
+      
+      if(success && continuity){
         ik_result_pub.publish(move_group_interface.ik_result);
+        move_group_interface.pre_ik_result = move_group_interface.ik_result;
+      }
+      else{
+        // Keep valid target pose 
+        ur10_teleop_interface::SetTargetPoseRequest req;
+        ur10_teleop_interface::SetTargetPoseResponse res;
+        req.target_pose = move_group_interface.getCurrentPoseRPY();
+        set_target_pose_client.call(req, res);
+        ik_result_pub.publish(move_group_interface.pre_ik_result);
+      }
+    }
+    else if(mode == INIT)
+    {
+      // Init pre_ik_result
+      n.getParam(prefix+"/init_joint_states", move_group_interface.pre_ik_result.data);
     }
     
     loop_rate.sleep();

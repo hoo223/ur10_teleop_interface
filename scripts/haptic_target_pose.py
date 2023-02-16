@@ -74,13 +74,13 @@ class hapticTargetPose(object):
     self.haptic_pose_sub = rospy.Subscriber(prefix+'/device1/pose', PoseStamped, self.haptic_pose_callback)
     self.haptic_joint_states_sub = rospy.Subscriber(prefix+'/device1/joint_states', JointState, self.haptic_joint_states_callback)
     self.haptic_button_sub = rospy.Subscriber(prefix+'/device1/button', OmniButtonEvent, self.haptic_button_callback)
-    self.target_pose_sub = rospy.Subscriber(prefix+'/target_pose', Pose, self.target_pose_callback)
+    self.target_pose_sub = rospy.Subscriber(prefix+'/target_pose', PoseStamped, self.target_pose_callback)
 
     # tf listener
     self.listener = tf.TransformListener()
     
   def target_pose_callback(self, data):
-    self.target_pose = data
+    self.target_pose = data.pose
 
   # '/phantom/pose' topic 수신 시 콜백 - 햅틱 장치의 pose를 end-effector target pose로 변환
   def haptic_pose_callback(self, data):
