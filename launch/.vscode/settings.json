@@ -1,0 +1,12 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/hmci/test_folder/hsa_project/docker_containers/core_container/share/catkin_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages",
+        "/opt/caffe/python"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/hmci/test_folder/hsa_project/docker_containers/core_container/share/catkin_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages",
+        "/opt/caffe/python"
+    ]
+}
